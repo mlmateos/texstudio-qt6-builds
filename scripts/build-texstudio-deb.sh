@@ -11,7 +11,7 @@ set -euo pipefail
 #===============================================================================
 REPO_URL="https://github.com/texstudio-org/texstudio.git"
 GITHUB_USER="mlmateos"
-REPO_NAME="texstudio-builds"
+REPO_NAME="texstudio-qt6-builds"
 BRANCH="master"
 CLEAN_BUILD=false
 ENABLE_POPPLER=false
