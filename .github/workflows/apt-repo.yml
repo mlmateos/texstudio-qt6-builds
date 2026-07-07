@@ -1,0 +1,58 @@
+   name: Update APT Repository
+
+   on:
+     release:
+       types: [published]
+     workflow_dispatch: # Permite ejecución manual
+
+   permissions:
+     contents: write
+
+   jobs:
+     update-apt-repo:
+       runs-on: ubuntu-latest
+       steps:
+         - name: Checkout apt-repo branch
+           uses: actions/checkout@v4
+           with:
+             ref: apt-repo
+             path: apt-repo
+
+         - name: Install dpkg-dev
+           run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+
+         - name: Download .deb files
+           env:
+             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           run: |
+             mkdir -p apt-repo/pool
+             
+             # Lógica inteligente:
+             # Si se disparó por un Release, usamos ese Tag exacto.
+             # Si es manual, usamos v4.9.5 como fallback seguro.
+             if [ "${{ github.event_name }}" == "release" ]; then
+               TAG="${{ github.ref_name }}"
+             else
+               TAG="v4.9.5"
+             fi
+             
+             echo "📥 Descargando desde release: $TAG"
+             gh release download "$TAG" --repo ${{ github.repository }} \
+               --pattern "*.deb" \
+               --dir apt-repo/pool \
+               --clobber || echo "⚠️ No se encontraron archivos .deb en $TAG"
+
+         - name: Generate Packages index
+           run: |
+             cd apt-repo
+             dpkg-scanpackages pool /dev/null | gzip -9c > pool/Packages.gz
+             dpkg-scanpackages pool /dev/null > pool/Packages
+
+         - name: Commit and push changes
+           run: |
+             cd apt-repo
+             git config user.name "github-actions[bot]"
+             git config user.email "github-actions[bot]@users.noreply.github.com"
+             git add pool/
+             git diff --cached --quiet || git commit -m "Update APT repository index for $TAG"
+             git push
