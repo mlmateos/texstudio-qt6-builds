@@ -45,8 +45,14 @@
          - name: Generate Packages index
            run: |
              cd apt-repo
+             # Generar Packages
              dpkg-scanpackages pool /dev/null | gzip -9c > pool/Packages.gz
              dpkg-scanpackages pool /dev/null > pool/Packages
+
+             # Generar Release
+             cd pool
+             apt-ftparchive release . > Release
+             gzip -9c Release > Release.gz
 
          - name: Commit and push changes
            run: |
