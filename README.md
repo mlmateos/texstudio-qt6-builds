@@ -23,7 +23,7 @@ The easiest way to install TeXstudio and keep it updated is via our APT reposito
 ### 1. Add the repository
 
 ```bash
-echo "deb [trusted=yes] https://mlmateos.github.io/texstudio-builds/ pool/" |   sudo tee /etc/apt/sources.list.d/texstudio.list
+echo "deb [trusted=yes] https://mlmateos.github.io/texstudio-qt6-builds/ pool/" |   sudo tee /etc/apt/sources.list.d/texstudio.list
 ```
 
 ### 2. Update package list
@@ -67,7 +67,7 @@ sudo apt upgrade texstudio
 
 If you prefer to download the `.deb` package directly:
 
-1. Go to [Releases](https://github.com/mlmateos/texstudio-builds/releases)
+1. Go to [Releases](https://github.com/mlmateos/texstudio-qt6-builds/releases)
 2. Download the latest `texstudio-*-qt6-amd64.deb`
 3. Install with:
 
@@ -83,7 +83,7 @@ Dependencies will be automatically resolved and installed.
 
 For a portable version that works on any Linux distribution:
 
-1. Download the latest `texstudio-*-qt6-x86_64.AppImage` from [Releases](https://github.com/mlmateos/texstudio-builds/releases)
+1. Download the latest `texstudio-*-qt6-x86_64.AppImage` from [Releases](https://github.com/mlmateos/texstudio-qt6-builds/releases)
 2. Make it executable:
 
 ```bash
@@ -101,8 +101,8 @@ If you want to compile TeXstudio yourself, this repository provides automated bu
 
 ```bash
 # Clone the repository
-git clone https://github.com/mlmateos/texstudio-builds.git
-cd texstudio-builds/scripts
+git clone https://github.com/mlmateos/texstudio-qt6-builds.git
+cd texstudio-qt6-builds/scripts
 ```
 
 ### Available Scripts
@@ -162,9 +162,9 @@ Issues and pull requests are welcome!
 
 ## 📞 Support
 
-- **GitHub Issues:** [Report a bug](https://github.com/mlmateos/texstudio-builds/issues)
+- **GitHub Issues:** [Report a bug](https://github.com/mlmateos/texstudio-qt6-builds/issues)
 - **Documentation:** [TeXstudio Manual](https://texstudio.github.io/manual.html)
 
 ---
 
-**Happy TeXing~/texstudio-builds* 🎓
+**Happy TeXing~/texstudio-qt6-builds* 🎓
