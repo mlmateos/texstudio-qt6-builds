@@ -1,19 +1,22 @@
-cat > .gitignore << 'EOF'
-# Build artifacts
-texstudio/
-texstudio-deb/
-AppDir/
-*.AppImage
-*.AppImage.asc
-*.AppImage.zsync
-*.deb
-*.deb.asc
-*.changes
-*.buildinfo
-*.build
-SHA256SUMS*.txt
-build-deb.log
-cmake_config.log
+# Build artifacts - IGNORAR en scripts/
+scripts/*.deb
+scripts/*.deb.asc
+scripts/*.buildinfo
+scripts/*.changes
+scripts/*.build
+scripts/SHA256SUMS*.txt
+scripts/build-deb.log
+scripts/cmake_config.log
+
+# AppImage artifacts - IGNORAR en scripts/
+scripts/*.AppImage
+scripts/*.AppImage.asc
+scripts/*.AppImage.zsync
+
+# Directorios de compilación
+scripts/texstudio/
+scripts/texstudio-deb/
+scripts/AppDir/
 
 # Editor temporaries
 *~
@@ -25,4 +28,3 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-EOF
