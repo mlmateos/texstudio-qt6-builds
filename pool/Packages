@@ -2,15 +2,15 @@ Package: texstudio
 Version: 4.9.6~alpha4-1
 Architecture: amd64
 Maintainer: Manuel Mateos <manuel@mateos.dev>
-Installed-Size: 373038
+Installed-Size: 373042
 Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-3t64 (>= 0.81.0), libqt6concurrent6 (>= 6.1.2), libqt6core5compat6 (>= 6.6.0), libqt6core6t64 (>= 6.8.2), libqt6dbus6 (>= 6.1.2), libqt6gui6 (>= 6.8.2), libqt6network6 (>= 6.4.0), libqt6printsupport6 (>= 6.1.2), libqt6qml6 (>= 6.6.0), libqt6svg6 (>= 6.6.0), libqt6widgets6 (>= 6.8.2), libqt6xml6 (>= 6.6.0), libquazip1-qt6-1t64 (>= 1.4), libstdc++6 (>= 14), libx11-6, zlib1g (>= 1:1.1.4)
 Recommends: texlive-latex-base, texlive-binaries, texlive-latex-recommended
 Suggests: texlive-full, biber, latexmk
 Filename: pool/texstudio-4.9.6-alpha4-qt6-amd64.deb
-Size: 59342236
-MD5sum: 67888a8fc50281c8a99401699aaad402
-SHA1: 467e80a603432f182244d442b7390b19c419114b
-SHA256: ba25c7c4ebc120ec71755e30a0ce7d3ade8426767358e7089bd5bb2ca2fe9358
+Size: 59357952
+MD5sum: bc6a43b9f9f55b3856287c7ae02b037a
+SHA1: d9803e79f7bfb586a106fb663af16cd8fda185cc
+SHA256: 97199c4536b5450b44518e9d9cb4204cdbf8db1464a469d74684fa743d6585cf
 Section: editors
 Priority: optional
 Homepage: https://www.texstudio.org/
