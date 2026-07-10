@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #===============================================================================
-# build-texstudio-deb.sh (v1.2-Robust)
+# build-texstudio-deb.sh (v1.3-Patched)
 # Compila TeXstudio desde fuente, genera paquete .deb (Qt6 + Poppler),
 # firma y publica en GitHub Releases junto con la AppImage
-# v1.2: Mejora detección de release existente, coherente con AppImage v2.7
+# v1.3: Añade parches para URLs de actualización y créditos, integra con APT repo
 #===============================================================================
 set -euo pipefail
 #===============================================================================
@@ -21,6 +21,8 @@ GPG_KEY=""
 PKG_REVISION="1"
 MAX_RETRIES=3
 RETRY_DELAY=5
+APT_REPO_URL="https://mlmateos.github.io/texstudio-qt6-builds"
+APT_REPO_GITHUB="https://github.com/mlmateos/texstudio-qt6-builds"
 #===============================================================================
 # DETECCIÓN INTELIGENTE DE HILOS
 #===============================================================================
@@ -249,6 +251,46 @@ VER=$(echo "$RAW_VER" | sed -E 's/alpha([0-9]+)/-alpha\1/; s/beta([0-9]+)/-beta\
 DEB_VER=$(echo "$VER" | sed 's/-alpha/~alpha/g; s/-beta/~beta/g; s/-rc/~rc/g')
 log "Versión final para .deb: ${DEB_VER}-${PKG_REVISION}"
 #===============================================================================
+# PARCHE: MODIFICAR URLs DE ACTUALIZACIÓN Y AÑADIR CRÉDITOS
+#===============================================================================
+header "🔧 APLICANDO PARCHE PERSONALIZADO"
+log "Modificando URLs de actualización..."
+
+# Parchear src/updatechecker.cpp
+if [[ -f "$PROJECT_DIR/src/updatechecker.cpp" ]]; then
+    # Cambiar URL de API de GitHub a nuestro update.json
+    sed -i 's|https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags|'"$APT_REPO_URL"'/pool/update.json|g' "$PROJECT_DIR/src/updatechecker.cpp"
+    
+    # Cambiar URLs de descarga
+    sed -i 's|https://texstudio.org|'"$APT_REPO_URL"'|g' "$PROJECT_DIR/src/updatechecker.cpp"
+    sed -i 's|https://github.com/texstudio-org/texstudio/releases|'"$APT_REPO_GITHUB"'/releases|g' "$PROJECT_DIR/src/updatechecker.cpp"
+    
+    log "✅ URLs de actualización modificadas en src/updatechecker.cpp"
+else
+    warn "⚠️  No se encontró src/updatechecker.cpp, omitiendo parche de URLs"
+fi
+
+# Añadir créditos en el diálogo About
+log "Añadiendo créditos al diálogo About..."
+ABOUT_FILE="$PROJECT_DIR/src/aboutdialog.cpp"
+if [[ -f "$ABOUT_FILE" ]]; then
+    # Buscar el texto "TeXstudio" y añadir créditos después
+    if ! grep -q "Custom build with Qt6" "$ABOUT_FILE"; then
+        # Crear texto de créditos en inglés
+        CREDITS_TEXT='<p><b>TeXstudio Qt6 Build with Poppler<\/b><br>Custom build with Qt6 and Poppler support<br>Compiled by Manuel López Mateos<br><a href="https:\/\/github.com\/mlmateos\/texstudio-qt6-builds">https:\/\/github.com\/mlmateos\/texstudio-qt6-builds<\/a><\/p><p><i>This is an unofficial build. TeXstudio © Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann.<\/i><\/p>'
+        
+        # Insertar después de la primera mención de TeXstudio
+        sed -i '/<h2>TeXstudio<\/h2>/a \        aboutText += "'"$CREDITS_TEXT"'";' "$ABOUT_FILE"
+        
+        log "✅ Créditos añadidos al diálogo About"
+    else
+        log "ℹ️  Créditos ya presentes, omitiendo"
+    fi
+else
+    warn "⚠️  No se encontró src/aboutdialog.cpp, omitiendo créditos"
+fi
+
+#===============================================================================
 # CREAR ESTRUCTURA DEBIAN
 #===============================================================================
 header "📦 GENERANDO ESTRUCTURA DEBIAN"
@@ -293,6 +335,8 @@ Description: Integrated writing environment for creating LaTeX documents
   * Spell checking (Hunspell)
   * Live preview
   * Built on Qt6 for modern UI/UX
+ .
+ This is a custom build with Qt6 and Poppler support by Manuel López Mateos.
 EOF
 
 # debian/rules
@@ -324,6 +368,7 @@ texstudio (${DEB_VER}-${PKG_REVISION}) unstable; urgency=medium
 
   * Compiled from upstream source tag ${VER_GIT:-$RAW_VER}.
   * Built with Qt6 and Poppler-Qt6 for PDF preview.
+  * Custom build with patched update URLs.
 
  -- Manuel Mateos <manuel@mateos.dev>  ${FECHA}
 EOF
@@ -341,7 +386,7 @@ Source: https://github.com/texstudio-org/texstudio
 Files: *
 Copyright: 2003-2024 TeXstudio developers
 License: GPL-3+
-Comment: Compiled locally from upstream source.
+Comment: Custom build with Qt6 and Poppler by Manuel López Mateos.
 EOF
 
 log "✅ Estructura debian/ creada."
@@ -516,23 +561,76 @@ if [[ "$PUBLISH" == true ]]; then
     done
 fi
 #===============================================================================
+# INTEGRACIÓN CON REPOSITORIO APT
+#===============================================================================
+header "📦 INTEGRANDO CON REPOSITORIO APT"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APT_REPO_DIR="$REPO_ROOT"
+
+log "Copiando archivos al repositorio APT..."
+cd "$APT_REPO_DIR"
+
+# Cambiar a rama apt-repo
+git checkout apt-repo 2>/dev/null || die "No se pudo cambiar a rama apt-repo"
+
+# Copiar archivos a pool/
+cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
+[[ -f "$REPO_ROOT/scripts/${DEB_FINAL}.asc" ]] && cp "$REPO_ROOT/scripts/${DEB_FINAL}.asc" pool/
+
+# Crear update.json para verificación de actualizaciones
+log "Creando update.json..."
+cat > pool/update.json << EOF
+{
+  "version": "$VER",
+  "download_url": "$APT_REPO_GITHUB/releases",
+  "release_notes": "TeXstudio $VER with Qt6 and Poppler support"
+}
+EOF
+
+# Actualizar índice Packages
+log "Actualizando índice Packages..."
+dpkg-scanpackages pool /dev/null | gzip -9c > pool/Packages.gz
+dpkg-scanpackages pool /dev/null > pool/Packages
+
+# Commit y push
+git add -f pool/
+git commit -m "Add TeXstudio $VER to APT repository" || log "ℹ️  No hay cambios para commitear"
+git push origin apt-repo
+
+# Volver a master
+git checkout master
+
+log "✅ Archivos añadidos al repositorio APT"
+log "🔗 URL: $APT_REPO_URL/pool/$DEB_FINAL"
+
+#===============================================================================
 # RESULTADO FINAL
 #===============================================================================
 header "🎉 RESULTADO FINAL"
-if [[ -f "$DEB_FINAL" ]]; then
+
+# Buscar el .deb en scripts/ (donde realmente está)
+DEB_PATH="$REPO_ROOT/scripts/$DEB_FINAL"
+
+if [[ -f "$DEB_PATH" ]]; then
     log "¡ÉXITO! Paquete .deb listo:"
     echo "   📦 $(basename "$DEB_FINAL")"
-    echo "   📍 $(pwd)/$DEB_FINAL"
-    echo "   🔧 Tamaño: $(du -h "$DEB_FINAL" | cut -f1)"
-    [[ -f "${DEB_FINAL}.asc" ]] && echo "   🔐 Firma: $(basename "${DEB_FINAL}.asc")"
-    [[ -f "SHA256SUMS-DEB.txt" ]] && echo "   🔍 Checksum: SHA256SUMS-DEB.txt"
+    echo "   📍 $DEB_PATH"
+    echo "   🔧 Tamaño: $(du -h "$DEB_PATH" | cut -f1)"
+    [[ -f "${DEB_PATH}.asc" ]] && echo "   🔐 Firma: $(basename "${DEB_FINAL}.asc")"
+    [[ -f "$REPO_ROOT/scripts/SHA256SUMS-DEB.txt" ]] && echo "   🔍 Checksum: SHA256SUMS-DEB.txt"
     echo ""
-    echo "▶  Para instalar:"
-    echo "   sudo apt install ./$(basename "$DEB_FINAL")"
+    echo "▶  Para instalar desde APT:"
+    echo "   sudo apt update && sudo apt install texstudio"
+    echo ""
+    echo "▶  Para instalar manualmente:"
+    echo "   sudo apt install $DEB_PATH"
     echo ""
     echo "▶  Para desinstalar:"
     echo "   sudo apt remove texstudio"
+    echo ""
+    echo "▶  Repositorio APT:"
+    echo "   $APT_REPO_URL"
 else
-    die "No se generó el archivo .deb correctamente."
+    die "No se generó el archivo .deb correctamente en $DEB_PATH"
 fi
 log "✅ Proceso completado."
