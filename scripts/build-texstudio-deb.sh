@@ -647,7 +647,7 @@ if [[ "$PUBLISH" == true ]]; then
     done
 fi
 #===============================================================================
-# INTEGRACIÓN CON REPOSITORIO APT
+# INTEGRACIÓN CON REPOSITORIO APT (CON RAMAS STABLE/ALPHA)
 #===============================================================================
 header "📦 INTEGRANDO CON REPOSITORIO APT"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -660,13 +660,12 @@ cd "$APT_REPO_DIR"
 STASHED=false
 if ! git diff-index --quiet HEAD -- 2>/dev/null; then
     log "💾 Guardando cambios locales (git stash)..."
-    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "️  No se pudo hacer stash"
+    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️  No se pudo hacer stash"
     STASHED=true
 fi
 
 # Cambiar a rama apt-repo
 if ! git checkout apt-repo 2>/dev/null; then
-    # Si falla, intentar con stash
     if [[ "$STASHED" == false ]]; then
         git stash push -m "Auto-stash by build script" || true
         STASHED=true
@@ -678,8 +677,46 @@ fi
 cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
 [[ -f "$REPO_ROOT/scripts/${DEB_FINAL}.asc" ]] && cp "$REPO_ROOT/scripts/${DEB_FINAL}.asc" pool/
 
-# Crear update.json para verificación de actualizaciones (formato EXACTO de GitHub API)
-log "Creando update.json..."
+# Crear estructura de ramas (dists/stable y dists/alpha)
+log " Creando estructura de ramas (stable/alpha)..."
+mkdir -p dists/stable/main/binary-amd64
+mkdir -p dists/alpha/main/binary-amd64
+
+# 1. Generar Packages para rama ALPHA (todos los paquetes)
+log "📋 Generando rama alpha (todas las versiones)..."
+dpkg-scanpackages pool /dev/null > dists/alpha/main/binary-amd64/Packages
+gzip -9c dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/Packages.gz
+
+# 2. Generar Packages para rama STABLE (solo versiones sin alpha/beta/rc)
+log "📋 Generando rama stable (solo versiones estables)..."
+> dists/stable/main/binary-amd64/Packages
+
+# Leemos el Packages completo y filtramos por bloques
+current_block=""
+while IFS= read -r line; do
+    if [[ "$line" =~ ^Filename:\ pool/ ]]; then
+        filename="${line#Filename: pool/}"
+        # Si el nombre del archivo NO contiene alpha, beta ni rc, es estable
+        if [[ "$filename" != *alpha* && "$filename" != *beta* && "$filename" != *rc* ]]; then
+            echo "$current_block" >> dists/stable/main/binary-amd64/Packages
+            echo "$line" >> dists/stable/main/binary-amd64/Packages
+            current_block=""
+        else
+            current_block="" # Descartar bloque inestable
+        fi
+    else
+        current_block+="$line"$'\n'
+    fi
+done < dists/alpha/main/binary-amd64/Packages
+
+# Comprimir la rama stable
+gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
+
+STABLE_COUNT=$(grep -c '^Package:' dists/stable/main/binary-amd64/Packages)
+log "✅ Rama stable generada con $STABLE_COUNT paquete(s) estable(s)"
+
+# Crear update.json (formato GitHub API)
+log "🔄 Actualizando update.json..."
 cat > pool/update.json << EOF
 [
   {
@@ -705,27 +742,23 @@ cat > pool/update.json << EOF
 ]
 EOF
 
-# Actualizar índice Packages
-log "Actualizando índice Packages..."
-dpkg-scanpackages pool /dev/null | gzip -9c > pool/Packages.gz
-dpkg-scanpackages pool /dev/null > pool/Packages
-
 # Commit y push
-git add -f pool/
-git commit -m "Add TeXstudio $VER to APT repository" || log "ℹ️  No hay cambios para commitear"
+git add -f pool/ dists/
+git commit -m "Add TeXstudio $VER to APT repository (stable/alpha branches)" || log "ℹ️  No hay cambios para commitear"
 git push origin apt-repo
 
 # Volver a master
 git checkout master
 
-# Restaurar cambios locales si se hicieron stash
+# Restaurar cambios locales
 if [[ "$STASHED" == true ]]; then
-    log "🔄 Restaurando cambios locales (git stash pop)..."
+    log " Restaurando cambios locales (git stash pop)..."
     git stash pop || warn "⚠️  No se pudo restaurar stash automáticamente. Usa 'git stash pop' manualmente."
 fi
 
 log "✅ Archivos añadidos al repositorio APT"
-log "🔗 URL: $APT_REPO_URL/pool/$DEB_FINAL"
+log " Rama stable: $APT_REPO_URL/dists/stable/main/binary-amd64/Packages"
+log "🔗 Rama alpha:  $APT_REPO_URL/dists/alpha/main/binary-amd64/Packages"
 
 #===============================================================================
 # RESULTADO FINAL
