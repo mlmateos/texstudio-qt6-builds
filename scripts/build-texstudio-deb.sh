@@ -667,21 +667,17 @@ APT_REPO_DIR="$REPO_ROOT"
 log "Copiando archivos al repositorio APT..."
 cd "$APT_REPO_DIR"
 
-# Guardar cambios locales si los hay (stash)
+# Guardar cambios locales de master antes de cambiar de rama
 STASHED=false
 if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-    log "💾 Guardando cambios locales (git stash)..."
+    log "💾 Guardando cambios locales de master (git stash)..."
     git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️  No se pudo hacer stash"
     STASHED=true
 fi
 
 # Cambiar a rama apt-repo
 if ! git checkout apt-repo 2>/dev/null; then
-    if [[ "$STASHED" == false ]]; then
-        git stash push -m "Auto-stash by build script" || true
-        STASHED=true
-    fi
-    git checkout apt-repo || die "No se pudo cambiar a rama apt-repo"
+    git checkout -b apt-repo origin/apt-repo || die "No se pudo cambiar a rama apt-repo"
 fi
 
 # Copiar archivos a pool/
@@ -692,10 +688,11 @@ cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
 log "📂 Creando estructura de ramas (stable/alpha)..."
 mkdir -p dists/stable/main/binary-amd64
 mkdir -p dists/alpha/main/binary-amd64
+
 # 1. Generar Packages para rama ALPHA (todos los paquetes, incluyendo múltiples versiones)
 log "📋 Generando rama alpha (todas las versiones)..."
 
-# Crear un archivo temporal con todos los .deb
+# Crear un directorio temporal con todos los .deb
 TEMP_DIR=$(mktemp -d)
 for deb in pool/*.deb; do
     if [[ -f "$deb" ]]; then
@@ -738,6 +735,7 @@ gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd6
 
 STABLE_COUNT=$(grep -c '^Package:' dists/stable/main/binary-amd64/Packages 2>/dev/null || echo "0")
 log "✅ Rama stable generada con $STABLE_COUNT paquete(s) estable(s)"
+
 # Crear update.json (formato GitHub API)
 log "🔄 Actualizando update.json..."
 cat > pool/update.json << EOF
@@ -765,7 +763,7 @@ cat > pool/update.json << EOF
 ]
 EOF
 
-# Commit y push
+# Commit y push en la rama apt-repo
 git add -f pool/ dists/
 git commit -m "Add TeXstudio $VER to APT repository (stable/alpha branches)" || log "ℹ️  No hay cambios para commitear"
 git push origin apt-repo
@@ -773,10 +771,10 @@ git push origin apt-repo
 # Volver a master
 git checkout master
 
-# Restaurar cambios locales
+# Restaurar cambios locales de master si se hicieron stash
 if [[ "$STASHED" == true ]]; then
-    log "🔄 Restaurando cambios locales (git stash pop)..."
-    git stash pop || warn "⚠️  No se pudo restaurar stash automáticamente. Usa 'git stash pop' manualmente."
+    log "🔄 Restaurando cambios locales de master (git stash pop)..."
+    git stash pop || warn "️  No se pudo restaurar stash automáticamente. Usa 'git stash pop' manualmente."
 fi
 
 log "✅ Archivos añadidos al repositorio APT"
