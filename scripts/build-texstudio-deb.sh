@@ -603,8 +603,23 @@ APT_REPO_DIR="$REPO_ROOT"
 log "Copiando archivos al repositorio APT..."
 cd "$APT_REPO_DIR"
 
+# Guardar cambios locales si los hay (stash)
+STASHED=false
+if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+    log "💾 Guardando cambios locales (git stash)..."
+    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️  No se pudo hacer stash"
+    STASHED=true
+fi
+
 # Cambiar a rama apt-repo
-git checkout apt-repo 2>/dev/null || die "No se pudo cambiar a rama apt-repo"
+if ! git checkout apt-repo 2>/dev/null; then
+    # Si falla, intentar con stash
+    if [[ "$STASHED" == false ]]; then
+        git stash push -m "Auto-stash by build script" || true
+        STASHED=true
+    fi
+    git checkout apt-repo || die "No se pudo cambiar a rama apt-repo"
+fi
 
 # Copiar archivos a pool/
 cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
@@ -650,9 +665,14 @@ git push origin apt-repo
 # Volver a master
 git checkout master
 
+# Restaurar cambios locales si se hicieron stash
+if [[ "$STASHED" == true ]]; then
+    log "🔄 Restaurando cambios locales (git stash pop)..."
+    git stash pop || warn "⚠️  No se pudo restaurar stash automáticamente. Usa 'git stash pop' manualmente."
+fi
+
 log "✅ Archivos añadidos al repositorio APT"
 log "🔗 URL: $APT_REPO_URL/pool/$DEB_FINAL"
-
 #===============================================================================
 # RESULTADO FINAL
 #===============================================================================
