@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #===============================================================================
-# build-texstudio-deb.sh (v1.5-Final)
+# build-texstudio-deb.sh (v1.6-Final)
 # Compila TeXstudio desde fuente, genera paquete .deb (Qt6 + Poppler),
 # firma y publica en GitHub Releases junto con la AppImage
-# v1.5: Créditos reorganizados, mención de IA, update.json corregido
+# v1.6: Créditos reorganizados, update.json corregido, auto-stash mejorado
 #===============================================================================
 set -euo pipefail
 #===============================================================================
@@ -160,13 +160,13 @@ if [[ "$GLIBC_RAW" =~ ([0-9]+\.[0-9]+) ]]; then
     GLIBC_VERSION="${BASH_REMATCH[1]}"
 fi
 if [[ -z "$GLIBC_VERSION" ]]; then
-    warn "⚠️  No se pudo detectar la versión de glibc, asumiendo compatible"
+    warn "️  No se pudo detectar la versión de glibc, asumiendo compatible"
     GLIBC_VERSION="2.34"
 fi
 log "📋 glibc detectada: $GLIBC_VERSION"
 GLIBC_CHECK=$(printf '%s\n' "2.34" "$GLIBC_VERSION" | sort -V | head -n1)
 if [[ "$GLIBC_CHECK" != "2.34" ]]; then
-    warn "⚠️  glibc < 2.34. Qt6 requiere glibc ≥ 2.34."
+    warn "️  glibc < 2.34. Qt6 requiere glibc ≥ 2.34."
     warn "💡 El .deb podría no funcionar en sistemas antiguos."
 else
     log "✅ glibc ≥ 2.34 (compatible con Qt6)"
@@ -197,7 +197,7 @@ if [[ ! -d "$PROJECT_DIR/.git" ]]; then
     fi
     cd "$PROJECT_DIR"
     if ! git_with_retry "git fetch --tags" git fetch --tags origin; then
-        warn "️  No se pudieron obtener tags tras $MAX_RETRIES intentos, continuando sin ellos..."
+        warn "⚠️  No se pudieron obtener tags tras $MAX_RETRIES intentos, continuando sin ellos..."
     fi
     cd - >/dev/null
 else
@@ -261,9 +261,9 @@ VER=$(echo "$RAW_VER" | sed -E 's/alpha([0-9]+)/-alpha\1/; s/beta([0-9]+)/-beta\
 DEB_VER=$(echo "$VER" | sed 's/-alpha/~alpha/g; s/-beta/~beta/g; s/-rc/~rc/g')
 log "Versión final para .deb: ${DEB_VER}-${PKG_REVISION}"
 #===============================================================================
-# PARCHE: MODIFICAR URLs DE ACTUALIZACIÓN Y AÑADIR CRÉDITOS
+# PARCHE: MODIFICAR URLs DE ACTUALIZACIÓN Y REORGANIZAR ABOUT DIALOG
 #===============================================================================
-header "🔧 APLICANDO PARCHE PERSONALIZADO"
+header " APLICANDO PARCHE PERSONALIZADO"
 log "Modificando URLs de actualización..."
 
 # Parchear src/updatechecker.cpp
@@ -287,28 +287,78 @@ else
     warn "⚠️  No se encontró src/updatechecker.cpp"
 fi
 
-# Añadir créditos en el diálogo About
-log "Añadiendo créditos al diálogo About..."
+# Reorganizar el diálogo About con créditos completos
+log "Reorganizando diálogo About..."
 ABOUT_FILE="$PROJECT_DIR/src/aboutdialog.cpp"
 if [[ -f "$ABOUT_FILE" ]]; then
-    log "📝 Modificando $ABOUT_FILE..."
+    log " Modificando $ABOUT_FILE..."
     
-    # Buscar dónde está el texto de la versión y añadir después
     if ! grep -q "Custom build with Qt6" "$ABOUT_FILE"; then
-        # Insertar créditos después de "Project home site:" y antes de "Latest stable version:"
-        sed -i '/tr("Project home site:") + " <a href=\\"https:\/\/texstudio\.org\/\\">https:\/\/texstudio\.org\/<\/a><br>" +/a \
-                            "<br><b>TeXstudio Qt6 Build with Poppler</b><br>" +\
-                            "Custom build with Qt6 and Poppler support<br>" +\
-                            "Compiled by Manuel L\\u00f3pez Mateos<br>" +\
-                            "<a href=\\"https://github.com/mlmateos/texstudio-qt6-builds\\">https://github.com/mlmateos/texstudio-qt6-builds</a><br>" +\
-                            "<br><i>This is an unofficial build. TeXstudio \\u00a9 Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann.</i><br>" +\
-                            "<i>AI assistance provided by Qwen (Alibaba Group).</i><br>" +' "$ABOUT_FILE"
+        # Usar Python para reemplazar la función setText completa
+        python3 << 'PYTHON'
+import re
+
+# Leer el archivo original
+with open(about_file_path, 'r') as f:
+    content = f.read()
+
+# Nueva función setText con créditos reorganizados
+new_setText = '''void AboutDialog::setText(QString latestVersion) {
+    QString changelogPath = findResourceFile("CHANGELOG.md");
+    if(changelogPath.isEmpty()){
+        changelogPath="https://texstudio-org.github.io/CHANGELOG.html";
+    }else{
+        if(!changelogPath.startsWith("/")){
+            changelogPath="/"+changelogPath;
+        }
+        changelogPath="file://"+changelogPath;
+    }
+    if (latestVersion=="") latestVersion = tr("couldn't retrieve data");
+    ui.textBrowser->setOpenExternalLinks(true);
+    ui.textBrowser->setHtml(QString("<b>%1 %2</b> (git %3)").arg(TEXSTUDIO,TXSVERSION,TEXSTUDIO_GIT_REVISION ? TEXSTUDIO_GIT_REVISION : "n/a") + "<br>" +
+                            tr("Using Qt Version %1, compiled with Qt %2 %3").arg(qVersion(),QT_VERSION_STR,COMPILED_DEBUG_OR_RELEASE) + "<br><br>" +
+                            "<b>TeXstudio Qt6 Build with Poppler</b><br>" +
+                            "Custom build with Qt6 and Poppler support<br>" +
+                            "Compiled by Manuel L\\\\u00f3pez Mateos<br>" +
+                            "AI assistance provided by Qwen (Alibaba Group).<br>" +
+                            "<a href=\\"https://github.com/mlmateos/texstudio-qt6-builds\\">https://github.com/mlmateos/texstudio-qt6-builds</a><br><br>" +
+                            tr("Latest stable version: %1").arg(latestVersion)+"<br>" +
+                            "<a href=\\""+changelogPath+"\\">"+tr("Changelog")+"</a><br><br>" +
+                            "This is an unofficial build.<br><br>" +
+                            "TeXstudio \\\\u00a9 Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann.<br>" +
+                            tr("Project home site:") + " <a href=\\"https://texstudio.org/\\">https://texstudio.org/</a><br><br>" +
+                                "Copyright (c)<br>" +
+                                TEXSTUDIO + ": Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann<br>" +
+                                "Texmaker: Pascal Brachet<br>" +
+                                "QCodeEdit: Luc Bruant<br>" +
+                                tr("html conversion: ") + QString::fromUtf8("Joël Amblard</i><br>") +
+                                tr("TeXstudio contains code from Hunspell (GPL), QtCreator (GPL, Copyright (C) Nokia), KILE (GPL) and SyncTeX (by Jerome Laurens).") + "<br>" +
+                                tr("TeXstudio uses the PDF viewer of TeXworks.") + "<br>" +
+                                tr("TeXstudio uses the DSingleApplication class (Author: Dima Fedorov Levit - Copyright (C) BioImage Informatics - Licence: GPL).") + "<br>" +
+                                tr("TeXstudio uses TexTablet (MIT License, Copyright (c) 2012 Steven Lovegrove).") + "<br>" +
+                                tr("TeXstudio uses QuaZip (LGPL, Copyright (C) 2005-2012 Sergey A. Tachenov and contributors).") + "<br>" +
+                                tr("TeXstudio uses To Title Case (MIT License, Copyright (c) 2008-2013 David Gouch).") + "<br>" +
+                                tr("TeXstudio contains an image by Alexander Klink.") + "<br>" +
+                                tr("TeXstudio uses icons from the Crystal Project (LGPL), the Oxygen icon theme (CC-BY-SA 3.0) and the Colibre icon theme (CC0) of LibreOffice.") + "<br>" +
+                                tr("TeXstudio uses flowlayout from Qt5.6 examples.") + "<br>" +
+                            tr("TeXstudio uses adwaita-qt (GPL2) from ") + "<a href=\\"https://github.com/FedoraQt/adwaita-qt\\">https://github.com/FedoraQt/adwaita-qt</a><br>" +
+                                "<br>" +
+                            tr("Thanks to ") + QString::fromUtf8("Frédéric Devernay, Denis Bitouzé, Vesselin Atanasov, Yukai Chou, Jean-Côme Charpentier, Luis Silvestre, Enrico Vittorini, Aleksandr Zolotarev, David Sichau, Grigory Mozhaev, mattgk, A. Weder, Pavel Fric, András Somogyi, István Blahota, Edson Henriques, Grant McLean, Tom Jampen, Kostas Oikinimou, Lion Guillaume, ranks.nl, AI Corleone, Diego Andrés Jarrín, Matthias Pospiech, Zulkifli Hidayat, Christian Spieß, Robert Diaz, Kirill Müller, Atsushi Nakajima Yuriy Kolerov, Victor Kozyakin, Mattia Meneguzzo, Andriy Bandura, Carlos Eduardo Valencia Urbina, Koutheir Attouchi, Stefan Kraus, Bjoern Menke, Charles Brunet, François Gannaz, Marek Kurdej, Paulo Silva, Thiago de Melo, YoungFrog, Klaus Schneider-Zapp, Jakob Nixdorf, Thomas Leitz, Quoc Ho, Matthew Bertucci, geolta.<br><br>") +
+                            tr("This program is licensed to you under the terms of the GNU General Public License Version 3 as published by the Free Software Foundation."));
+}'''
+
+# Reemplazar la función setText completa
+pattern = r'void AboutDialog::setText\(QString latestVersion\)\s*\{.*?\n\}'
+content = re.sub(pattern, new_setText, content, flags=re.DOTALL)
+
+# Guardar el archivo modificado
+with open(about_file_path, 'w') as f:
+    f.write(content)
+
+print("✅ Diálogo About reorganizado correctamente")
+PYTHON
         
-        log "✅ Créditos añadidos al diálogo About"
-        
-        # Mostrar líneas modificadas
-        echo "   🔍 Líneas modificadas:"
-        grep -A12 "Project home site" "$ABOUT_FILE" | head -15 || warn "⚠️  No se encontraron créditos"
+        log "✅ Créditos reorganizados en el diálogo About"
     else
         log "ℹ️  Créditos ya presentes"
     fi
@@ -401,7 +451,7 @@ texstudio (${DEB_VER}-${PKG_REVISION}) unstable; urgency=medium
 
   * Compiled from upstream source tag ${VER_GIT:-$RAW_VER}.
   * Built with Qt6 and Poppler-Qt6 for PDF preview.
-  * Custom build with patched update URLs.
+  * Custom build with patched update URLs and reorganized About dialog.
 
  -- Manuel Mateos <manuel@mateos.dev>  ${FECHA}
 EOF
@@ -579,7 +629,7 @@ if [[ "$PUBLISH" == true ]]; then
             fi
             log "🔗 https://github.com/$FULL_REPO/releases/tag/v${VER}"
         else
-            log "📦 Publicación cancelada por el usuario."
+            log " Publicación cancelada por el usuario."
             exit 0
         fi
     fi
@@ -607,7 +657,7 @@ cd "$APT_REPO_DIR"
 STASHED=false
 if ! git diff-index --quiet HEAD -- 2>/dev/null; then
     log "💾 Guardando cambios locales (git stash)..."
-    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️  No se pudo hacer stash"
+    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "️  No se pudo hacer stash"
     STASHED=true
 fi
 
@@ -625,28 +675,28 @@ fi
 cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
 [[ -f "$REPO_ROOT/scripts/${DEB_FINAL}.asc" ]] && cp "$REPO_ROOT/scripts/${DEB_FINAL}.asc" pool/
 
-# Crear update.json para verificación de actualizaciones (formato compatible con API de GitHub)
+# Crear update.json para verificación de actualizaciones (formato EXACTO de GitHub API)
 log "Creando update.json..."
 cat > pool/update.json << EOF
 [
   {
-    "ref": "refs/tags/${VER//\~/}",
-    "node_id": "MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy8${VER//\~/}",
-    "url": "https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/${VER//\~/}",
-    "object": {
-      "sha": "abc123def456789",
-      "type": "tag",
-      "url": "https://api.github.com/repos/texstudio-org/texstudio/git/tags/abc123def456789"
+    "ref":"refs/tags/${VER//\~/}",
+    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy8${VER//\~/}",
+    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/${VER//\~/}",
+    "object":{
+      "sha":"abc123def456789",
+      "type":"commit",
+      "url":"https://api.github.com/repos/texstudio-org/texstudio/git/commits/abc123def456789"
     }
   },
   {
-    "ref": "refs/tags/4.9.5",
-    "node_id": "MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy80LjkuNQ==",
-    "url": "https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.5",
-    "object": {
-      "sha": "def456abc789012",
-      "type": "tag",
-      "url": "https://api.github.com/repos/texstudio-org/texstudio/git/tags/def456abc789012"
+    "ref":"refs/tags/4.9.5",
+    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy80LjkuNQ==",
+    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.5",
+    "object":{
+      "sha":"def456abc789012",
+      "type":"commit",
+      "url":"https://api.github.com/repos/texstudio-org/texstudio/git/commits/def456abc789012"
     }
   }
 ]
@@ -673,10 +723,11 @@ fi
 
 log "✅ Archivos añadidos al repositorio APT"
 log "🔗 URL: $APT_REPO_URL/pool/$DEB_FINAL"
+
 #===============================================================================
 # RESULTADO FINAL
 #===============================================================================
-header " RESULTADO FINAL"
+header "🎉 RESULTADO FINAL"
 
 # Buscar el .deb en scripts/ (donde realmente está)
 DEB_PATH="$REPO_ROOT/scripts/$DEB_FINAL"
