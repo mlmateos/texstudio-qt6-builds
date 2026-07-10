@@ -393,8 +393,7 @@ CMAKE_ARGS=(
 )
 
 if [[ "$ENABLE_POPPLER" == true ]]; then
-    CMAKE_ARGS+=(-DTEXSTUDIO_ENABLE_POPPLER=ON)
-    log " Poppler-Qt6 habilitado"
+    log "✅ Poppler-Qt6 habilitado (detectado automáticamente por CMake)"
 fi
 
 cmake "$PROJECT_DIR" "${CMAKE_ARGS[@]}" || die "CMake falló"
