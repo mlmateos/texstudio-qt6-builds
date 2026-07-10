@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #===============================================================================
-# build-texstudio-deb.sh (v1.2-Robust)
+# build-texstudio-deb.sh (v1.7-Final)
 # Compila TeXstudio desde fuente, genera paquete .deb (Qt6 + Poppler),
 # firma y publica en GitHub Releases junto con la AppImage
-# v1.2: Mejora detección de release existente, coherente con AppImage v2.7
+# v1.7: Créditos reorganizados, URLs parcheadas, repositorio APT con ramas
+#       stable/alpha, modo automatizado con --yes
 #===============================================================================
 set -euo pipefail
 #===============================================================================
@@ -21,6 +22,10 @@ GPG_KEY=""
 PKG_REVISION="1"
 MAX_RETRIES=3
 RETRY_DELAY=5
+APT_REPO_URL="https://mlmateos.github.io/texstudio-qt6-builds"
+APT_REPO_GITHUB="https://github.com/mlmateos/texstudio-qt6-builds"
+KEEP_SOURCE=true
+AUTO_CONFIRM=false
 #===============================================================================
 # DETECCIÓN INTELIGENTE DE HILOS
 #===============================================================================
@@ -46,18 +51,22 @@ while [[ $# -gt 0 ]]; do
         --publish)    PUBLISH=true; shift ;;
         --gpg-key)    GPG_KEY="$2"; shift 2 ;;
         --revision)   PKG_REVISION="$2"; shift 2 ;;
+        --yes)        AUTO_CONFIRM=true; shift ;;
+        --no-keep-source) KEEP_SOURCE=false; shift ;;
         --help|-h)
             cat << 'HELP'
 Uso: ./build-texstudio-deb.sh [OPCIONES]
 
   --clean         Limpia todo antes de empezar
-  --branch NAME   Rama o tag a compilar (ej: 4.9.5)
+  --branch NAME   Rama o tag a compilar (ej: 4.9.5, 4.9.6alpha4)
   --jobs N        Hilos para compilación
   --poppler       Habilita visor PDF interno (Poppler-Qt6)
   --sign          Firma el .deb con GPG
   --publish       Publica en GitHub Releases (misma release que AppImage)
   --gpg-key ID    ID de clave GPG para firmar
   --revision N    Revisión Debian (default: 1)
+  --yes           No pide confirmación (modo automatizado)
+  --no-keep-source No mantiene el código fuente después de compilar
   --help, -h      Muestra esta ayuda
 HELP
             exit 0 ;;
@@ -174,8 +183,15 @@ PROJECT_DIR="$(pwd)/texstudio-deb"
 BUILD_DIR="$PROJECT_DIR/build"
 
 if [[ "$CLEAN_BUILD" == true ]]; then
-    log "Limpiando build anterior..."
-    rm -rf "$PROJECT_DIR"
+    if [[ "$KEEP_SOURCE" == true ]]; then
+        log "Limpiando build anterior (manteniendo código fuente)..."
+        rm -rf "$BUILD_DIR"
+        rm -rf "$PROJECT_DIR/debian"
+        rm -f "$PROJECT_DIR"/*.deb "$PROJECT_DIR"/*.buildinfo "$PROJECT_DIR"/*.changes
+    else
+        log "Limpiando todo..."
+        rm -rf "$PROJECT_DIR"
+    fi
 fi
 
 if [[ ! -d "$PROJECT_DIR/.git" ]]; then
@@ -249,6 +265,121 @@ VER=$(echo "$RAW_VER" | sed -E 's/alpha([0-9]+)/-alpha\1/; s/beta([0-9]+)/-beta\
 DEB_VER=$(echo "$VER" | sed 's/-alpha/~alpha/g; s/-beta/~beta/g; s/-rc/~rc/g')
 log "Versión final para .deb: ${DEB_VER}-${PKG_REVISION}"
 #===============================================================================
+# PARCHE: MODIFICAR URLs DE ACTUALIZACIÓN Y REORGANIZAR ABOUT DIALOG
+#===============================================================================
+header "🔧 APLICANDO PARCHE PERSONALIZADO"
+log "Modificando URLs de actualización..."
+
+# Parchear src/updatechecker.cpp
+UPDATECHECKER_FILE="$PROJECT_DIR/src/updatechecker.cpp"
+if [[ -f "$UPDATECHECKER_FILE" ]]; then
+    log "📝 Modificando $UPDATECHECKER_FILE..."
+    
+    # Reemplazar la URL de la API de GitHub
+    sed -i 's|https://api\.github\.com/repos/texstudio-org/texstudio/git/refs/tags|'"$APT_REPO_URL"'/pool/update.json|g' "$UPDATECHECKER_FILE"
+    
+    # Reemplazar URLs de descarga
+    sed -i 's|https://texstudio\.org|'"$APT_REPO_URL"'|g' "$UPDATECHECKER_FILE"
+    sed -i 's|https://github\.com/texstudio-org/texstudio/releases|'"$APT_REPO_GITHUB"'/releases|g' "$UPDATECHECKER_FILE"
+    
+    log "✅ URLs de actualización modificadas"
+    
+    echo "   🔍 Líneas modificadas:"
+    grep -n "mlmateos\|update.json" "$UPDATECHECKER_FILE" | head -5 || warn "⚠️  No se encontraron modificaciones"
+else
+    warn "⚠️  No se encontró src/updatechecker.cpp"
+fi
+
+# Reorganizar el diálogo About con créditos completos
+log "Reorganizando diálogo About..."
+ABOUT_FILE="$PROJECT_DIR/src/aboutdialog.cpp"
+if [[ -f "$ABOUT_FILE" ]]; then
+    log "📝 Modificando $ABOUT_FILE..."
+    
+    if ! grep -q "Custom build with Qt6" "$ABOUT_FILE"; then
+        # Usar Python para reemplazar la función setText completa
+        python3 - "$ABOUT_FILE" << 'PYTHON'
+import re
+import sys
+
+about_file_path = sys.argv[1]
+
+# Leer el archivo original
+with open(about_file_path, 'r') as f:
+    content = f.read()
+
+# Nueva función setText con créditos reorganizados
+new_setText = '''void AboutDialog::setText(QString latestVersion) {
+    QString changelogPath = findResourceFile("CHANGELOG.md");
+    if(changelogPath.isEmpty()){
+        changelogPath="https://texstudio-org.github.io/CHANGELOG.html";
+    }else{
+        if(!changelogPath.startsWith("/")){
+            changelogPath="/"+changelogPath;
+        }
+        changelogPath="file://"+changelogPath;
+    }
+    if (latestVersion=="") latestVersion = tr("couldn't retrieve data");
+    ui.textBrowser->setOpenExternalLinks(true);
+    ui.textBrowser->setHtml(QString("<b>%1 %2</b> (git %3)").arg(TEXSTUDIO,TXSVERSION,TEXSTUDIO_GIT_REVISION ? TEXSTUDIO_GIT_REVISION : "n/a") + "<br>" +
+                            tr("Using Qt Version %1, compiled with Qt %2 %3").arg(qVersion(),QT_VERSION_STR,COMPILED_DEBUG_OR_RELEASE) + "<br><br>" +
+                            "<b>TeXstudio Qt6 Build with Poppler</b><br>" +
+                            "Custom build with Qt6 and Poppler support<br>" +
+                            "Compiled by Manuel L\\\\u00f3pez Mateos<br>" +
+                            "AI assistance provided by Qwen (Alibaba Group).<br>" +
+                            "<a href=\\"https://github.com/mlmateos/texstudio-qt6-builds\\">https://github.com/mlmateos/texstudio-qt6-builds</a><br><br>" +
+                            tr("Latest stable version: %1").arg(latestVersion)+"<br>" +
+                            "<a href=\\""+changelogPath+"\\">"+tr("Changelog")+"</a><br><br>" +
+                            "This is an unofficial build.<br><br>" +
+                            "TeXstudio \\\\u00a9 Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann.<br>" +
+                            tr("Project home site:") + " <a href=\\"https://texstudio.org/\\">https://texstudio.org/</a><br><br>" +
+                                "Copyright (c)<br>" +
+                                TEXSTUDIO + ": Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann<br>" +
+                                "Texmaker: Pascal Brachet<br>" +
+                                "QCodeEdit: Luc Bruant<br>" +
+                                tr("html conversion: ") + QString::fromUtf8("Joël Amblard</i><br>") +
+                                tr("TeXstudio contains code from Hunspell (GPL), QtCreator (GPL, Copyright (C) Nokia), KILE (GPL) and SyncTeX (by Jerome Laurens).") + "<br>" +
+                                tr("TeXstudio uses the PDF viewer of TeXworks.") + "<br>" +
+                                tr("TeXstudio uses the DSingleApplication class (Author: Dima Fedorov Levit - Copyright (C) BioImage Informatics - Licence: GPL).") + "<br>" +
+                                tr("TeXstudio uses TexTablet (MIT License, Copyright (c) 2012 Steven Lovegrove).") + "<br>" +
+                                tr("TeXstudio uses QuaZip (LGPL, Copyright (C) 2005-2012 Sergey A. Tachenov and contributors).") + "<br>" +
+                                tr("TeXstudio uses To Title Case (MIT License, Copyright (c) 2008-2013 David Gouch).") + "<br>" +
+                                tr("TeXstudio contains an image by Alexander Klink.") + "<br>" +
+                                tr("TeXstudio uses icons from the Crystal Project (LGPL), the Oxygen icon theme (CC-BY-SA 3.0) and the Colibre icon theme (CC0) of LibreOffice.") + "<br>" +
+                                tr("TeXstudio uses flowlayout from Qt5.6 examples.") + "<br>" +
+                            tr("TeXstudio uses adwaita-qt (GPL2) from ") + "<a href=\\"https://github.com/FedoraQt/adwaita-qt\\">https://github.com/FedoraQt/adwaita-qt</a><br>" +
+                                "<br>" +
+                            tr("Thanks to ") + QString::fromUtf8("Frédéric Devernay, Denis Bitouzé, Vesselin Atanasov, Yukai Chou, Jean-Côme Charpentier, Luis Silvestre, Enrico Vittorini, Aleksandr Zolotarev, David Sichau, Grigory Mozhaev, mattgk, A. Weder, Pavel Fric, András Somogyi, István Blahota, Edson Henriques, Grant McLean, Tom Jampen, Kostas Oikinimou, Lion Guillaume, ranks.nl, AI Corleone, Diego Andrés Jarrín, Matthias Pospiech, Zulkifli Hidayat, Christian Spieß, Robert Diaz, Kirill Müller, Atsushi Nakajima Yuriy Kolerov, Victor Kozyakin, Mattia Meneguzzo, Andriy Bandura, Carlos Eduardo Valencia Urbina, Koutheir Attouchi, Stefan Kraus, Bjoern Menke, Charles Brunet, François Gannaz, Marek Kurdej, Paulo Silva, Thiago de Melo, YoungFrog, Klaus Schneider-Zapp, Jakob Nixdorf, Thomas Leitz, Quoc Ho, Matthew Bertucci, geolta.<br><br>") +
+                            tr("This program is licensed to you under the terms of the GNU General Public License Version 3 as published by the Free Software Foundation."));
+}'''
+
+# Reemplazar la función setText completa
+pattern = r'void AboutDialog::setText\(QString latestVersion\)\s*\{.*?\n\}'
+content = re.sub(pattern, new_setText, content, flags=re.DOTALL)
+
+# Guardar el archivo modificado
+with open(about_file_path, 'w') as f:
+    f.write(content)
+
+print("✅ Diálogo About reorganizado correctamente")
+PYTHON
+        
+        log "✅ Créditos reorganizados en el diálogo About"
+    else
+        log "ℹ️  Créditos ya presentes"
+    fi
+else
+    warn "⚠️  No se encontró src/aboutdialog.cpp"
+fi
+
+# Guardar copia del código fuente parcheado para inspección
+log "Guardando copia del código fuente parcheado..."
+BACKUP_DIR="$(pwd)/patched-source-backup"
+mkdir -p "$BACKUP_DIR"
+cp -r "$PROJECT_DIR/src" "$BACKUP_DIR/"
+log "✅ Copia guardada en $BACKUP_DIR/src/"
+
+#===============================================================================
 # CREAR ESTRUCTURA DEBIAN
 #===============================================================================
 header "📦 GENERANDO ESTRUCTURA DEBIAN"
@@ -293,6 +424,8 @@ Description: Integrated writing environment for creating LaTeX documents
   * Spell checking (Hunspell)
   * Live preview
   * Built on Qt6 for modern UI/UX
+ .
+ This is a custom build with Qt6 and Poppler support by Manuel López Mateos.
 EOF
 
 # debian/rules
@@ -324,6 +457,7 @@ texstudio (${DEB_VER}-${PKG_REVISION}) unstable; urgency=medium
 
   * Compiled from upstream source tag ${VER_GIT:-$RAW_VER}.
   * Built with Qt6 and Poppler-Qt6 for PDF preview.
+  * Custom build with patched update URLs.
 
  -- Manuel Mateos <manuel@mateos.dev>  ${FECHA}
 EOF
@@ -341,7 +475,7 @@ Source: https://github.com/texstudio-org/texstudio
 Files: *
 Copyright: 2003-2024 TeXstudio developers
 License: GPL-3+
-Comment: Compiled locally from upstream source.
+Comment: Custom build with Qt6 and Poppler by Manuel López Mateos.
 EOF
 
 log "✅ Estructura debian/ creada."
@@ -466,7 +600,11 @@ if [[ "$PUBLISH" == true ]]; then
 
     if [[ "$RELEASE_EXISTS" == true ]]; then
         log "⚠️  La release 'v${VER}' YA EXISTE en $FULL_REPO."
-        read -r -p "¿Deseas AÑADIR el .deb a esta release existente? (y/N) " CONFIRM_UPDATE
+        if [[ "$AUTO_CONFIRM" == true ]]; then
+            CONFIRM_UPDATE="y"
+        else
+            read -r -p "¿Deseas AÑADIR el .deb a esta release existente? (y/N) " CONFIRM_UPDATE
+        fi
         if [[ "$CONFIRM_UPDATE" =~ ^[Yy]$ ]]; then
             gh release upload "v${VER}" --clobber --repo "$FULL_REPO" "${UPLOAD_FILES[@]}"
             gh release edit "v${VER}" --repo "$FULL_REPO" --title "TeXstudio ${VER} (Qt6 + Poppler)"
@@ -478,7 +616,11 @@ if [[ "$PUBLISH" == true ]]; then
         fi
     else
         log "✨ Es una NUEVA versión: v${VER}."
-        read -r -p "¿Deseas CREAR la release 'v${VER}' con el .deb? (y/N) " CONFIRM_CREATE
+        if [[ "$AUTO_CONFIRM" == true ]]; then
+            CONFIRM_CREATE="y"
+        else
+            read -r -p "¿Deseas CREAR la release 'v${VER}' con el .deb? (y/N) " CONFIRM_CREATE
+        fi
         if [[ "$CONFIRM_CREATE" =~ ^[Yy]$ ]]; then
             CREATE_ARGS=(
                 "v${VER}"
@@ -516,23 +658,155 @@ if [[ "$PUBLISH" == true ]]; then
     done
 fi
 #===============================================================================
+# INTEGRACIÓN CON REPOSITORIO APT (CON RAMAS STABLE/ALPHA)
+#===============================================================================
+header "📦 INTEGRANDO CON REPOSITORIO APT"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APT_REPO_DIR="$REPO_ROOT"
+
+log "Copiando archivos al repositorio APT..."
+cd "$APT_REPO_DIR"
+
+# Guardar cambios locales si los hay (stash)
+STASHED=false
+if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+    log "💾 Guardando cambios locales (git stash)..."
+    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️  No se pudo hacer stash"
+    STASHED=true
+fi
+
+# Cambiar a rama apt-repo
+if ! git checkout apt-repo 2>/dev/null; then
+    if [[ "$STASHED" == false ]]; then
+        git stash push -m "Auto-stash by build script" || true
+        STASHED=true
+    fi
+    git checkout apt-repo || die "No se pudo cambiar a rama apt-repo"
+fi
+
+# Copiar archivos a pool/
+cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
+[[ -f "$REPO_ROOT/scripts/${DEB_FINAL}.asc" ]] && cp "$REPO_ROOT/scripts/${DEB_FINAL}.asc" pool/
+
+# Crear estructura de ramas (dists/stable y dists/alpha)
+log "📂 Creando estructura de ramas (stable/alpha)..."
+mkdir -p dists/stable/main/binary-amd64
+mkdir -p dists/alpha/main/binary-amd64
+
+# 1. Generar Packages para rama ALPHA (todos los paquetes, incluyendo múltiples versiones)
+log "📋 Generando rama alpha (todas las versiones)..."
+dpkg-scanpackages --multiversion pool /dev/null > dists/alpha/main/binary-amd64/Packages
+gzip -9c dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/Packages.gz
+
+# 2. Generar Packages para rama STABLE (solo versiones sin alpha/beta/rc)
+log "📋 Generando rama stable (solo versiones estables)..."
+> dists/stable/main/binary-amd64/Packages
+
+# Leemos el Packages completo y filtramos por bloques
+current_block=""
+while IFS= read -r line; do
+    if [[ "$line" =~ ^Filename:\ pool/ ]]; then
+        filename="${line#Filename: pool/}"
+        # Si el nombre del archivo NO contiene alpha, beta ni rc, es estable
+        if [[ "$filename" != *alpha* && "$filename" != *beta* && "$filename" != *rc* ]]; then
+            echo "$current_block" >> dists/stable/main/binary-amd64/Packages
+            echo "$line" >> dists/stable/main/binary-amd64/Packages
+            current_block=""
+        else
+            current_block="" # Descartar bloque inestable
+        fi
+    else
+        current_block+="$line"$'\n'
+    fi
+done < dists/alpha/main/binary-amd64/Packages
+
+# Comprimir la rama stable
+gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
+
+STABLE_COUNT=$(grep -c '^Package:' dists/stable/main/binary-amd64/Packages || echo "0")
+log "✅ Rama stable generada con $STABLE_COUNT paquete(s) estable(s)"
+
+# Crear update.json (formato GitHub API)
+log "🔄 Actualizando update.json..."
+cat > pool/update.json << EOF
+[
+  {
+    "ref":"refs/tags/${VER//\~/}",
+    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy8${VER//\~/}",
+    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/${VER//\~/}",
+    "object":{
+      "sha":"abc123def456789",
+      "type":"commit",
+      "url":"https://api.github.com/repos/texstudio-org/texstudio/git/commits/abc123def456789"
+    }
+  },
+  {
+    "ref":"refs/tags/4.9.5",
+    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy80LjkuNQ==",
+    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.5",
+    "object":{
+      "sha":"def456abc789012",
+      "type":"commit",
+      "url":"https://api.github.com/repos/texstudio-org/texstudio/git/commits/def456abc789012"
+    }
+  }
+]
+EOF
+
+# Commit y push
+git add -f pool/ dists/
+git commit -m "Add TeXstudio $VER to APT repository (stable/alpha branches)" || log "ℹ️  No hay cambios para commitear"
+git push origin apt-repo
+
+# Volver a master
+git checkout master
+
+# Restaurar cambios locales
+if [[ "$STASHED" == true ]]; then
+    log "🔄 Restaurando cambios locales (git stash pop)..."
+    git stash pop || warn "⚠️  No se pudo restaurar stash automáticamente. Usa 'git stash pop' manualmente."
+fi
+
+log "✅ Archivos añadidos al repositorio APT"
+log "🔗 Rama stable: $APT_REPO_URL/dists/stable/main/binary-amd64/Packages"
+log "🔗 Rama alpha:  $APT_REPO_URL/dists/alpha/main/binary-amd64/Packages"
+
+#===============================================================================
 # RESULTADO FINAL
 #===============================================================================
 header "🎉 RESULTADO FINAL"
-if [[ -f "$DEB_FINAL" ]]; then
+
+# Buscar el .deb en scripts/ (donde realmente está)
+DEB_PATH="$REPO_ROOT/scripts/$DEB_FINAL"
+
+if [[ -f "$DEB_PATH" ]]; then
     log "¡ÉXITO! Paquete .deb listo:"
     echo "   📦 $(basename "$DEB_FINAL")"
-    echo "   📍 $(pwd)/$DEB_FINAL"
-    echo "   🔧 Tamaño: $(du -h "$DEB_FINAL" | cut -f1)"
-    [[ -f "${DEB_FINAL}.asc" ]] && echo "   🔐 Firma: $(basename "${DEB_FINAL}.asc")"
-    [[ -f "SHA256SUMS-DEB.txt" ]] && echo "   🔍 Checksum: SHA256SUMS-DEB.txt"
+    echo "   📍 $DEB_PATH"
+    echo "   🔧 Tamaño: $(du -h "$DEB_PATH" | cut -f1)"
+    [[ -f "${DEB_PATH}.asc" ]] && echo "   🔐 Firma: $(basename "${DEB_FINAL}.asc")"
+    [[ -f "$REPO_ROOT/scripts/SHA256SUMS-DEB.txt" ]] && echo "   🔍 Checksum: SHA256SUMS-DEB.txt"
     echo ""
-    echo "▶  Para instalar:"
-    echo "   sudo apt install ./$(basename "$DEB_FINAL")"
+    echo "▶  Para instalar desde APT:"
+    echo "   sudo apt update && sudo apt install texstudio"
+    echo ""
+    echo "▶  Para instalar manualmente:"
+    echo "   sudo apt install $DEB_PATH"
     echo ""
     echo "▶  Para desinstalar:"
     echo "   sudo apt remove texstudio"
+    echo ""
+    echo "▶  Repositorio APT:"
+    echo "   $APT_REPO_URL"
+    echo ""
+    echo "▶  Código fuente parcheado guardado en:"
+    echo "   $BACKUP_DIR/src/"
+    echo ""
+    echo "▶  Para verificar los parches:"
+    echo "   cd $BACKUP_DIR/src"
+    echo "   grep -n 'mlmateos' updatechecker.cpp"
+    echo "   grep -n 'Custom build' aboutdialog.cpp"
 else
-    die "No se generó el archivo .deb correctamente."
+    die "No se generó el archivo .deb correctamente en $DEB_PATH"
 fi
 log "✅ Proceso completado."
