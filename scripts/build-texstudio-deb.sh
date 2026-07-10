@@ -24,6 +24,7 @@ RETRY_DELAY=5
 APT_REPO_URL="https://mlmateos.github.io/texstudio-qt6-builds"
 APT_REPO_GITHUB="https://github.com/mlmateos/texstudio-qt6-builds"
 KEEP_SOURCE=true
+AUTO_CONFIRM=false
 #===============================================================================
 # DETECCIÓN INTELIGENTE DE HILOS
 #===============================================================================
@@ -50,6 +51,7 @@ while [[ $# -gt 0 ]]; do
         --gpg-key)    GPG_KEY="$2"; shift 2 ;;
         --revision)   PKG_REVISION="$2"; shift 2 ;;
         --no-keep-source) KEEP_SOURCE=false; shift ;;
+        --yes)        AUTO_CONFIRM=true; shift ;;
         --help|-h)
             cat << 'HELP'
 Uso: ./build-texstudio-deb.sh [OPCIONES]
@@ -63,6 +65,7 @@ Uso: ./build-texstudio-deb.sh [OPCIONES]
   --gpg-key ID    ID de clave GPG para firmar
   --revision N    Revisión Debian (default: 1)
   --no-keep-source No mantiene el código fuente después de compilar
+  --yes           No pide confirmación (modo automatizado)
   --help, -h      Muestra esta ayuda
 HELP
             exit 0 ;;
@@ -597,7 +600,11 @@ if [[ "$PUBLISH" == true ]]; then
 
     if [[ "$RELEASE_EXISTS" == true ]]; then
         log "⚠️  La release 'v${VER}' YA EXISTE en $FULL_REPO."
-        read -r -p "¿Deseas AÑADIR el .deb a esta release existente? (y/N) " CONFIRM_UPDATE
+        if [[ "$AUTO_CONFIRM" == true ]]; then
+            CONFIRM_UPDATE="y"
+        else
+            read -r -p "¿Deseas AÑADIR el .deb a esta release existente? (y/N) " CONFIRM_UPDATE
+        fi
         if [[ "$CONFIRM_UPDATE" =~ ^[Yy]$ ]]; then
             gh release upload "v${VER}" --clobber --repo "$FULL_REPO" "${UPLOAD_FILES[@]}"
             gh release edit "v${VER}" --repo "$FULL_REPO" --title "TeXstudio ${VER} (Qt6 + Poppler)"
@@ -609,7 +616,11 @@ if [[ "$PUBLISH" == true ]]; then
         fi
     else
         log "✨ Es una NUEVA versión: v${VER}."
-        read -r -p "¿Deseas CREAR la release 'v${VER}' con el .deb? (y/N) " CONFIRM_CREATE
+        if [[ "$AUTO_CONFIRM" == true ]]; then
+            CONFIRM_CREATE="y"
+        else
+            read -r -p "¿Deseas CREAR la release 'v${VER}' con el .deb? (y/N) " CONFIRM_CREATE
+        fi
         if [[ "$CONFIRM_CREATE" =~ ^[Yy]$ ]]; then
             CREATE_ARGS=(
                 "v${VER}"
