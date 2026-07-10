@@ -6,11 +6,11 @@ Installed-Size: 372594
 Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-3t64 (>= 0.81.0), libqt6concurrent6 (>= 6.1.2), libqt6core5compat6 (>= 6.6.0), libqt6core6t64 (>= 6.8.2), libqt6dbus6 (>= 6.1.2), libqt6gui6 (>= 6.8.2), libqt6network6 (>= 6.4.0), libqt6printsupport6 (>= 6.1.2), libqt6qml6 (>= 6.6.0), libqt6svg6 (>= 6.6.0), libqt6widgets6 (>= 6.8.2), libqt6xml6 (>= 6.6.0), libquazip1-qt6-1t64 (>= 1.4), libstdc++6 (>= 14), libx11-6, zlib1g (>= 1:1.1.4)
 Recommends: texlive-latex-base, texlive-binaries, texlive-latex-recommended
 Suggests: texlive-full, biber, latexmk
-Filename: /tmp/tmp.iqk5eKFp3W/texstudio-4.9.5-qt6-amd64.deb
-Size: 59216892
-MD5sum: 9dc60730268510a82bd51b606d885a84
-SHA1: fe2e4087048c424d24266efa05cfd9d22a48cc8c
-SHA256: 9d75ec08936d08fe3060e22a70e9d6e2f7bdef8b9184870402a7e4d6e833d18f
+Filename: pool/texstudio-4.9.5-qt6-amd64.deb
+Size: 59216788
+MD5sum: 8ebba0963a5fe9eae28f1dcc2bee6204
+SHA1: 9c66e97da12b4677b9ae2f8d0c8122d506d803d2
+SHA256: 7e8095331a9dd107fe1cefd398e168169ec11403c3d6d7fae6ecdfeae5722a1f
 Section: editors
 Priority: optional
 Homepage: https://www.texstudio.org/
@@ -36,7 +36,7 @@ Installed-Size: 373042
 Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-3t64 (>= 0.81.0), libqt6concurrent6 (>= 6.1.2), libqt6core5compat6 (>= 6.6.0), libqt6core6t64 (>= 6.8.2), libqt6dbus6 (>= 6.1.2), libqt6gui6 (>= 6.8.2), libqt6network6 (>= 6.4.0), libqt6printsupport6 (>= 6.1.2), libqt6qml6 (>= 6.6.0), libqt6svg6 (>= 6.6.0), libqt6widgets6 (>= 6.8.2), libqt6xml6 (>= 6.6.0), libquazip1-qt6-1t64 (>= 1.4), libstdc++6 (>= 14), libx11-6, zlib1g (>= 1:1.1.4)
 Recommends: texlive-latex-base, texlive-binaries, texlive-latex-recommended
 Suggests: texlive-full, biber, latexmk
-Filename: /tmp/tmp.iqk5eKFp3W/texstudio-4.9.6-alpha4-qt6-amd64.deb
+Filename: pool/texstudio-4.9.6-alpha4-qt6-amd64.deb
 Size: 59357376
 MD5sum: 3aa1c98e0e837e5233f2969d10ca10ae
 SHA1: dcf162cdfcc9af4e2ec11c33503ca4b957ca8e11

@@ -7,4 +7,4 @@ Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-
 Recommends: texlive-latex-base, texlive-binaries, texlive-latex-recommended
 Suggests: texlive-full, biber, latexmk
 
-Filename: /tmp/tmp.iqk5eKFp3W/texstudio-4.9.5-qt6-amd64.deb
+Filename: pool/texstudio-4.9.5-qt6-amd64.deb
