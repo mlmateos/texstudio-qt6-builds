@@ -692,19 +692,8 @@ mkdir -p dists/alpha/main/binary-amd64
 # 1. Generar Packages para rama ALPHA (todos los paquetes, incluyendo múltiples versiones)
 log "📋 Generando rama alpha (todas las versiones)..."
 
-# Crear un directorio temporal con todos los .deb
-TEMP_DIR=$(mktemp -d)
-for deb in pool/*.deb; do
-    if [[ -f "$deb" ]]; then
-        cp "$deb" "$TEMP_DIR/"
-    fi
-done
-
-# Generar Packages usando dpkg-scanpackages con --multiversion
-dpkg-scanpackages --multiversion "$TEMP_DIR" /dev/null > dists/alpha/main/binary-amd64/Packages 2>/dev/null || \
-    dpkg-scanpackages "$TEMP_DIR" /dev/null > dists/alpha/main/binary-amd64/Packages
-
-rm -rf "$TEMP_DIR"
+# Generar Packages usando dpkg-scanpackages con --multiversion directamente sobre pool/
+dpkg-scanpackages --multiversion pool /dev/null > dists/alpha/main/binary-amd64/Packages
 
 gzip -9c dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/Packages.gz
 
