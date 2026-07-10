@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #===============================================================================
-# build-texstudio-deb.sh (v1.3-Patched)
+# build-texstudio-deb.sh (v1.5-Final)
 # Compila TeXstudio desde fuente, genera paquete .deb (Qt6 + Poppler),
 # firma y publica en GitHub Releases junto con la AppImage
-# v1.3: Añade parches para URLs de actualización y créditos, integra con APT repo
+# v1.5: Créditos reorganizados, mención de IA, update.json corregido
 #===============================================================================
 set -euo pipefail
 #===============================================================================
@@ -23,6 +23,7 @@ MAX_RETRIES=3
 RETRY_DELAY=5
 APT_REPO_URL="https://mlmateos.github.io/texstudio-qt6-builds"
 APT_REPO_GITHUB="https://github.com/mlmateos/texstudio-qt6-builds"
+KEEP_SOURCE=true
 #===============================================================================
 # DETECCIÓN INTELIGENTE DE HILOS
 #===============================================================================
@@ -48,18 +49,20 @@ while [[ $# -gt 0 ]]; do
         --publish)    PUBLISH=true; shift ;;
         --gpg-key)    GPG_KEY="$2"; shift 2 ;;
         --revision)   PKG_REVISION="$2"; shift 2 ;;
+        --no-keep-source) KEEP_SOURCE=false; shift ;;
         --help|-h)
             cat << 'HELP'
 Uso: ./build-texstudio-deb.sh [OPCIONES]
 
   --clean         Limpia todo antes de empezar
-  --branch NAME   Rama o tag a compilar (ej: 4.9.5)
+  --branch NAME   Rama o tag a compilar (ej: 4.9.5, 4.9.6alpha4)
   --jobs N        Hilos para compilación
   --poppler       Habilita visor PDF interno (Poppler-Qt6)
   --sign          Firma el .deb con GPG
   --publish       Publica en GitHub Releases (misma release que AppImage)
   --gpg-key ID    ID de clave GPG para firmar
   --revision N    Revisión Debian (default: 1)
+  --no-keep-source No mantiene el código fuente después de compilar
   --help, -h      Muestra esta ayuda
 HELP
             exit 0 ;;
@@ -176,8 +179,15 @@ PROJECT_DIR="$(pwd)/texstudio-deb"
 BUILD_DIR="$PROJECT_DIR/build"
 
 if [[ "$CLEAN_BUILD" == true ]]; then
-    log "Limpiando build anterior..."
-    rm -rf "$PROJECT_DIR"
+    if [[ "$KEEP_SOURCE" == true ]]; then
+        log "Limpiando build anterior (manteniendo código fuente)..."
+        rm -rf "$BUILD_DIR"
+        rm -rf "$PROJECT_DIR/debian"
+        rm -f "$PROJECT_DIR"/*.deb "$PROJECT_DIR"/*.buildinfo "$PROJECT_DIR"/*.changes
+    else
+        log "Limpiando todo..."
+        rm -rf "$PROJECT_DIR"
+    fi
 fi
 
 if [[ ! -d "$PROJECT_DIR/.git" ]]; then
@@ -187,7 +197,7 @@ if [[ ! -d "$PROJECT_DIR/.git" ]]; then
     fi
     cd "$PROJECT_DIR"
     if ! git_with_retry "git fetch --tags" git fetch --tags origin; then
-        warn "⚠️  No se pudieron obtener tags tras $MAX_RETRIES intentos, continuando sin ellos..."
+        warn "️  No se pudieron obtener tags tras $MAX_RETRIES intentos, continuando sin ellos..."
     fi
     cd - >/dev/null
 else
@@ -257,17 +267,24 @@ header "🔧 APLICANDO PARCHE PERSONALIZADO"
 log "Modificando URLs de actualización..."
 
 # Parchear src/updatechecker.cpp
-if [[ -f "$PROJECT_DIR/src/updatechecker.cpp" ]]; then
-    # Cambiar URL de API de GitHub a nuestro update.json
-    sed -i 's|https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags|'"$APT_REPO_URL"'/pool/update.json|g' "$PROJECT_DIR/src/updatechecker.cpp"
+UPDATECHECKER_FILE="$PROJECT_DIR/src/updatechecker.cpp"
+if [[ -f "$UPDATECHECKER_FILE" ]]; then
+    log " Modificando $UPDATECHECKER_FILE..."
     
-    # Cambiar URLs de descarga
-    sed -i 's|https://texstudio.org|'"$APT_REPO_URL"'|g' "$PROJECT_DIR/src/updatechecker.cpp"
-    sed -i 's|https://github.com/texstudio-org/texstudio/releases|'"$APT_REPO_GITHUB"'/releases|g' "$PROJECT_DIR/src/updatechecker.cpp"
+    # Reemplazar la URL de la API de GitHub
+    sed -i 's|https://api\.github\.com/repos/texstudio-org/texstudio/git/refs/tags|'"$APT_REPO_URL"'/pool/update.json|g' "$UPDATECHECKER_FILE"
     
-    log "✅ URLs de actualización modificadas en src/updatechecker.cpp"
+    # Reemplazar URLs de descarga
+    sed -i 's|https://texstudio\.org|'"$APT_REPO_URL"'|g' "$UPDATECHECKER_FILE"
+    sed -i 's|https://github\.com/texstudio-org/texstudio/releases|'"$APT_REPO_GITHUB"'/releases|g' "$UPDATECHECKER_FILE"
+    
+    log "✅ URLs de actualización modificadas"
+    
+    # Mostrar líneas modificadas para depuración
+    echo "   🔍 Líneas modificadas:"
+    grep -n "mlmateos\|update.json" "$UPDATECHECKER_FILE" | head -5 || warn "⚠️  No se encontraron modificaciones"
 else
-    warn "⚠️  No se encontró src/updatechecker.cpp, omitiendo parche de URLs"
+    warn "⚠️  No se encontró src/updatechecker.cpp"
 fi
 
 # Añadir créditos en el diálogo About
@@ -278,25 +295,33 @@ if [[ -f "$ABOUT_FILE" ]]; then
     
     # Buscar dónde está el texto de la versión y añadir después
     if ! grep -q "Custom build with Qt6" "$ABOUT_FILE"; then
-        # Insertar créditos después de "Project home site:"
+        # Insertar créditos después de "Project home site:" y antes de "Latest stable version:"
         sed -i '/tr("Project home site:") + " <a href=\\"https:\/\/texstudio\.org\/\\">https:\/\/texstudio\.org\/<\/a><br>" +/a \
                             "<br><b>TeXstudio Qt6 Build with Poppler</b><br>" +\
                             "Custom build with Qt6 and Poppler support<br>" +\
                             "Compiled by Manuel L\\u00f3pez Mateos<br>" +\
                             "<a href=\\"https://github.com/mlmateos/texstudio-qt6-builds\\">https://github.com/mlmateos/texstudio-qt6-builds</a><br>" +\
-                            "<br><i>This is an unofficial build. TeXstudio \\u00a9 Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann.</i><br>" +' "$ABOUT_FILE"
+                            "<br><i>This is an unofficial build. TeXstudio \\u00a9 Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann.</i><br>" +\
+                            "<i>AI assistance provided by Qwen (Alibaba Group).</i><br>" +' "$ABOUT_FILE"
         
         log "✅ Créditos añadidos al diálogo About"
         
         # Mostrar líneas modificadas
         echo "   🔍 Líneas modificadas:"
-        grep -A5 "Project home site" "$ABOUT_FILE" | head -10 || warn "⚠️  No se encontraron créditos"
+        grep -A12 "Project home site" "$ABOUT_FILE" | head -15 || warn "⚠️  No se encontraron créditos"
     else
         log "ℹ️  Créditos ya presentes"
     fi
 else
     warn "⚠️  No se encontró src/aboutdialog.cpp"
 fi
+
+# Guardar copia del código fuente parcheado para inspección
+log "Guardando copia del código fuente parcheado..."
+BACKUP_DIR="$(pwd)/patched-source-backup"
+mkdir -p "$BACKUP_DIR"
+cp -r "$PROJECT_DIR/src" "$BACKUP_DIR/"
+log "✅ Copia guardada en $BACKUP_DIR/src/"
 
 #===============================================================================
 # CREAR ESTRUCTURA DEBIAN
@@ -467,7 +492,7 @@ if [[ "$PUBLISH" == true ]]; then
     fi
 
     # Limpieza de assets antiguos con reintentos
-    log "🧹 Limpiando archivos .deb de versiones anteriores..."
+    log " Limpiando archivos .deb de versiones anteriores..."
     EXISTING_ASSETS=$(gh release view "v${VER}" --repo "$FULL_REPO" --json assets --jq '.assets[].name' 2>/dev/null || echo "")
     for ASSET in $EXISTING_ASSETS; do
         KEEP=false
@@ -585,14 +610,31 @@ git checkout apt-repo 2>/dev/null || die "No se pudo cambiar a rama apt-repo"
 cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
 [[ -f "$REPO_ROOT/scripts/${DEB_FINAL}.asc" ]] && cp "$REPO_ROOT/scripts/${DEB_FINAL}.asc" pool/
 
-# Crear update.json para verificación de actualizaciones
+# Crear update.json para verificación de actualizaciones (formato compatible con API de GitHub)
 log "Creando update.json..."
 cat > pool/update.json << EOF
-{
-  "version": "$VER",
-  "download_url": "$APT_REPO_GITHUB/releases",
-  "release_notes": "TeXstudio $VER with Qt6 and Poppler support"
-}
+[
+  {
+    "ref": "refs/tags/${VER//\~/}",
+    "node_id": "MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy8${VER//\~/}",
+    "url": "https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/${VER//\~/}",
+    "object": {
+      "sha": "abc123def456789",
+      "type": "tag",
+      "url": "https://api.github.com/repos/texstudio-org/texstudio/git/tags/abc123def456789"
+    }
+  },
+  {
+    "ref": "refs/tags/4.9.5",
+    "node_id": "MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy80LjkuNQ==",
+    "url": "https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.5",
+    "object": {
+      "sha": "def456abc789012",
+      "type": "tag",
+      "url": "https://api.github.com/repos/texstudio-org/texstudio/git/tags/def456abc789012"
+    }
+  }
+]
 EOF
 
 # Actualizar índice Packages
@@ -614,7 +656,7 @@ log "🔗 URL: $APT_REPO_URL/pool/$DEB_FINAL"
 #===============================================================================
 # RESULTADO FINAL
 #===============================================================================
-header "🎉 RESULTADO FINAL"
+header " RESULTADO FINAL"
 
 # Buscar el .deb en scripts/ (donde realmente está)
 DEB_PATH="$REPO_ROOT/scripts/$DEB_FINAL"
@@ -622,7 +664,7 @@ DEB_PATH="$REPO_ROOT/scripts/$DEB_FINAL"
 if [[ -f "$DEB_PATH" ]]; then
     log "¡ÉXITO! Paquete .deb listo:"
     echo "   📦 $(basename "$DEB_FINAL")"
-    echo "   📍 $DEB_PATH"
+    echo "    $DEB_PATH"
     echo "   🔧 Tamaño: $(du -h "$DEB_PATH" | cut -f1)"
     [[ -f "${DEB_PATH}.asc" ]] && echo "   🔐 Firma: $(basename "${DEB_FINAL}.asc")"
     [[ -f "$REPO_ROOT/scripts/SHA256SUMS-DEB.txt" ]] && echo "   🔍 Checksum: SHA256SUMS-DEB.txt"
@@ -638,6 +680,14 @@ if [[ -f "$DEB_PATH" ]]; then
     echo ""
     echo "▶  Repositorio APT:"
     echo "   $APT_REPO_URL"
+    echo ""
+    echo "▶  Código fuente parcheado guardado en:"
+    echo "   $BACKUP_DIR/src/"
+    echo ""
+    echo "▶  Para verificar los parches:"
+    echo "   cd $BACKUP_DIR/src"
+    echo "   grep -n 'mlmateos' updatechecker.cpp"
+    echo "   grep -n 'Custom build' aboutdialog.cpp"
 else
     die "No se generó el archivo .deb correctamente en $DEB_PATH"
 fi
