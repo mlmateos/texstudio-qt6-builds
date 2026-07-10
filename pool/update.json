@@ -1,5 +1,22 @@
-{
-  "version": "4.9.6-alpha4",
-  "download_url": "https://github.com/mlmateos/texstudio-qt6-builds/releases",
-  "release_notes": "TeXstudio 4.9.6-alpha4 with Qt6 and Poppler support"
-}
+[
+  {
+    "ref": "refs/tags/4.9.6alpha4",
+    "node_id": "MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy80LjkuNmFscGhhNA==",
+    "url": "https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.6alpha4",
+    "object": {
+      "sha": "abc123def456789",
+      "type": "tag",
+      "url": "https://api.github.com/repos/texstudio-org/texstudio/git/tags/abc123def456789"
+    }
+  },
+  {
+    "ref": "refs/tags/4.9.5",
+    "node_id": "MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy80LjkuNQ==",
+    "url": "https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.5",
+    "object": {
+      "sha": "def456abc789012",
+      "type": "tag",
+      "url": "https://api.github.com/repos/texstudio-org/texstudio/git/tags/def456abc789012"
+    }
+  }
+]
