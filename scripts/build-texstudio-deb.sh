@@ -295,8 +295,11 @@ if [[ -f "$ABOUT_FILE" ]]; then
     
     if ! grep -q "Custom build with Qt6" "$ABOUT_FILE"; then
         # Usar Python para reemplazar la función setText completa
-        python3 << 'PYTHON'
+        python3 - "$ABOUT_FILE" << 'PYTHON'
 import re
+import sys
+
+about_file_path = sys.argv[1]
 
 # Leer el archivo original
 with open(about_file_path, 'r') as f:
