@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #===============================================================================
-# build-texstudio-deb.sh (v1.6-Final)
+# build-texstudio-deb.sh (v1.7-Final)
 # Compila TeXstudio desde fuente, genera paquete .deb (Qt6 + Poppler),
 # firma y publica en GitHub Releases junto con la AppImage
-# v1.6: Créditos reorganizados, update.json corregido, auto-stash mejorado
+# v1.7: Créditos reorganizados, URLs parcheadas, repositorio APT con ramas
+#       stable/alpha, modo automatizado con --yes
 #===============================================================================
 set -euo pipefail
 #===============================================================================
@@ -50,8 +51,8 @@ while [[ $# -gt 0 ]]; do
         --publish)    PUBLISH=true; shift ;;
         --gpg-key)    GPG_KEY="$2"; shift 2 ;;
         --revision)   PKG_REVISION="$2"; shift 2 ;;
-        --no-keep-source) KEEP_SOURCE=false; shift ;;
         --yes)        AUTO_CONFIRM=true; shift ;;
+        --no-keep-source) KEEP_SOURCE=false; shift ;;
         --help|-h)
             cat << 'HELP'
 Uso: ./build-texstudio-deb.sh [OPCIONES]
@@ -64,8 +65,8 @@ Uso: ./build-texstudio-deb.sh [OPCIONES]
   --publish       Publica en GitHub Releases (misma release que AppImage)
   --gpg-key ID    ID de clave GPG para firmar
   --revision N    Revisión Debian (default: 1)
-  --no-keep-source No mantiene el código fuente después de compilar
   --yes           No pide confirmación (modo automatizado)
+  --no-keep-source No mantiene el código fuente después de compilar
   --help, -h      Muestra esta ayuda
 HELP
             exit 0 ;;
@@ -163,13 +164,13 @@ if [[ "$GLIBC_RAW" =~ ([0-9]+\.[0-9]+) ]]; then
     GLIBC_VERSION="${BASH_REMATCH[1]}"
 fi
 if [[ -z "$GLIBC_VERSION" ]]; then
-    warn "️  No se pudo detectar la versión de glibc, asumiendo compatible"
+    warn "⚠️  No se pudo detectar la versión de glibc, asumiendo compatible"
     GLIBC_VERSION="2.34"
 fi
 log "📋 glibc detectada: $GLIBC_VERSION"
 GLIBC_CHECK=$(printf '%s\n' "2.34" "$GLIBC_VERSION" | sort -V | head -n1)
 if [[ "$GLIBC_CHECK" != "2.34" ]]; then
-    warn "️  glibc < 2.34. Qt6 requiere glibc ≥ 2.34."
+    warn "⚠️  glibc < 2.34. Qt6 requiere glibc ≥ 2.34."
     warn "💡 El .deb podría no funcionar en sistemas antiguos."
 else
     log "✅ glibc ≥ 2.34 (compatible con Qt6)"
@@ -266,13 +267,13 @@ log "Versión final para .deb: ${DEB_VER}-${PKG_REVISION}"
 #===============================================================================
 # PARCHE: MODIFICAR URLs DE ACTUALIZACIÓN Y REORGANIZAR ABOUT DIALOG
 #===============================================================================
-header " APLICANDO PARCHE PERSONALIZADO"
+header "🔧 APLICANDO PARCHE PERSONALIZADO"
 log "Modificando URLs de actualización..."
 
 # Parchear src/updatechecker.cpp
 UPDATECHECKER_FILE="$PROJECT_DIR/src/updatechecker.cpp"
 if [[ -f "$UPDATECHECKER_FILE" ]]; then
-    log " Modificando $UPDATECHECKER_FILE..."
+    log "📝 Modificando $UPDATECHECKER_FILE..."
     
     # Reemplazar la URL de la API de GitHub
     sed -i 's|https://api\.github\.com/repos/texstudio-org/texstudio/git/refs/tags|'"$APT_REPO_URL"'/pool/update.json|g' "$UPDATECHECKER_FILE"
@@ -283,7 +284,6 @@ if [[ -f "$UPDATECHECKER_FILE" ]]; then
     
     log "✅ URLs de actualización modificadas"
     
-    # Mostrar líneas modificadas para depuración
     echo "   🔍 Líneas modificadas:"
     grep -n "mlmateos\|update.json" "$UPDATECHECKER_FILE" | head -5 || warn "⚠️  No se encontraron modificaciones"
 else
@@ -294,7 +294,7 @@ fi
 log "Reorganizando diálogo About..."
 ABOUT_FILE="$PROJECT_DIR/src/aboutdialog.cpp"
 if [[ -f "$ABOUT_FILE" ]]; then
-    log " Modificando $ABOUT_FILE..."
+    log "📝 Modificando $ABOUT_FILE..."
     
     if ! grep -q "Custom build with Qt6" "$ABOUT_FILE"; then
         # Usar Python para reemplazar la función setText completa
@@ -457,7 +457,7 @@ texstudio (${DEB_VER}-${PKG_REVISION}) unstable; urgency=medium
 
   * Compiled from upstream source tag ${VER_GIT:-$RAW_VER}.
   * Built with Qt6 and Poppler-Qt6 for PDF preview.
-  * Custom build with patched update URLs and reorganized About dialog.
+  * Custom build with patched update URLs.
 
  -- Manuel Mateos <manuel@mateos.dev>  ${FECHA}
 EOF
@@ -548,7 +548,7 @@ if [[ "$PUBLISH" == true ]]; then
     fi
 
     # Limpieza de assets antiguos con reintentos
-    log " Limpiando archivos .deb de versiones anteriores..."
+    log "🧹 Limpiando archivos .deb de versiones anteriores..."
     EXISTING_ASSETS=$(gh release view "v${VER}" --repo "$FULL_REPO" --json assets --jq '.assets[].name' 2>/dev/null || echo "")
     for ASSET in $EXISTING_ASSETS; do
         KEEP=false
@@ -643,7 +643,7 @@ if [[ "$PUBLISH" == true ]]; then
             fi
             log "🔗 https://github.com/$FULL_REPO/releases/tag/v${VER}"
         else
-            log " Publicación cancelada por el usuario."
+            log "📦 Publicación cancelada por el usuario."
             exit 0
         fi
     fi
@@ -689,13 +689,26 @@ cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
 [[ -f "$REPO_ROOT/scripts/${DEB_FINAL}.asc" ]] && cp "$REPO_ROOT/scripts/${DEB_FINAL}.asc" pool/
 
 # Crear estructura de ramas (dists/stable y dists/alpha)
-log " Creando estructura de ramas (stable/alpha)..."
+log "📂 Creando estructura de ramas (stable/alpha)..."
 mkdir -p dists/stable/main/binary-amd64
 mkdir -p dists/alpha/main/binary-amd64
-
-# 1. Generar Packages para rama ALPHA (todos los paquetes)
+# 1. Generar Packages para rama ALPHA (todos los paquetes, incluyendo múltiples versiones)
 log "📋 Generando rama alpha (todas las versiones)..."
-dpkg-scanpackages pool /dev/null > dists/alpha/main/binary-amd64/Packages
+
+# Crear un archivo temporal con todos los .deb
+TEMP_DIR=$(mktemp -d)
+for deb in pool/*.deb; do
+    if [[ -f "$deb" ]]; then
+        cp "$deb" "$TEMP_DIR/"
+    fi
+done
+
+# Generar Packages usando dpkg-scanpackages con --multiversion
+dpkg-scanpackages --multiversion "$TEMP_DIR" /dev/null > dists/alpha/main/binary-amd64/Packages 2>/dev/null || \
+    dpkg-scanpackages "$TEMP_DIR" /dev/null > dists/alpha/main/binary-amd64/Packages
+
+rm -rf "$TEMP_DIR"
+
 gzip -9c dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/Packages.gz
 
 # 2. Generar Packages para rama STABLE (solo versiones sin alpha/beta/rc)
@@ -705,8 +718,8 @@ log "📋 Generando rama stable (solo versiones estables)..."
 # Leemos el Packages completo y filtramos por bloques
 current_block=""
 while IFS= read -r line; do
-    if [[ "$line" =~ ^Filename:\ pool/ ]]; then
-        filename="${line#Filename: pool/}"
+    if [[ "$line" =~ ^Filename: ]]; then
+        filename=$(echo "$line" | awk '{print $2}')
         # Si el nombre del archivo NO contiene alpha, beta ni rc, es estable
         if [[ "$filename" != *alpha* && "$filename" != *beta* && "$filename" != *rc* ]]; then
             echo "$current_block" >> dists/stable/main/binary-amd64/Packages
@@ -723,9 +736,8 @@ done < dists/alpha/main/binary-amd64/Packages
 # Comprimir la rama stable
 gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
 
-STABLE_COUNT=$(grep -c '^Package:' dists/stable/main/binary-amd64/Packages)
+STABLE_COUNT=$(grep -c '^Package:' dists/stable/main/binary-amd64/Packages 2>/dev/null || echo "0")
 log "✅ Rama stable generada con $STABLE_COUNT paquete(s) estable(s)"
-
 # Crear update.json (formato GitHub API)
 log "🔄 Actualizando update.json..."
 cat > pool/update.json << EOF
@@ -763,12 +775,12 @@ git checkout master
 
 # Restaurar cambios locales
 if [[ "$STASHED" == true ]]; then
-    log " Restaurando cambios locales (git stash pop)..."
+    log "🔄 Restaurando cambios locales (git stash pop)..."
     git stash pop || warn "⚠️  No se pudo restaurar stash automáticamente. Usa 'git stash pop' manualmente."
 fi
 
 log "✅ Archivos añadidos al repositorio APT"
-log " Rama stable: $APT_REPO_URL/dists/stable/main/binary-amd64/Packages"
+log "🔗 Rama stable: $APT_REPO_URL/dists/stable/main/binary-amd64/Packages"
 log "🔗 Rama alpha:  $APT_REPO_URL/dists/alpha/main/binary-amd64/Packages"
 
 #===============================================================================
@@ -782,7 +794,7 @@ DEB_PATH="$REPO_ROOT/scripts/$DEB_FINAL"
 if [[ -f "$DEB_PATH" ]]; then
     log "¡ÉXITO! Paquete .deb listo:"
     echo "   📦 $(basename "$DEB_FINAL")"
-    echo "    $DEB_PATH"
+    echo "   📍 $DEB_PATH"
     echo "   🔧 Tamaño: $(du -h "$DEB_PATH" | cut -f1)"
     [[ -f "${DEB_PATH}.asc" ]] && echo "   🔐 Firma: $(basename "${DEB_FINAL}.asc")"
     [[ -f "$REPO_ROOT/scripts/SHA256SUMS-DEB.txt" ]] && echo "   🔍 Checksum: SHA256SUMS-DEB.txt"
