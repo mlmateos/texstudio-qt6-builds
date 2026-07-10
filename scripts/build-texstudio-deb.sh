@@ -274,20 +274,28 @@ fi
 log "Añadiendo créditos al diálogo About..."
 ABOUT_FILE="$PROJECT_DIR/src/aboutdialog.cpp"
 if [[ -f "$ABOUT_FILE" ]]; then
-    # Buscar el texto "TeXstudio" y añadir créditos después
+    log "📝 Modificando $ABOUT_FILE..."
+    
+    # Buscar dónde está el texto de la versión y añadir después
     if ! grep -q "Custom build with Qt6" "$ABOUT_FILE"; then
-        # Crear texto de créditos en inglés
-        CREDITS_TEXT='<p><b>TeXstudio Qt6 Build with Poppler<\/b><br>Custom build with Qt6 and Poppler support<br>Compiled by Manuel López Mateos<br><a href="https:\/\/github.com\/mlmateos\/texstudio-qt6-builds">https:\/\/github.com\/mlmateos\/texstudio-qt6-builds<\/a><\/p><p><i>This is an unofficial build. TeXstudio © Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann.<\/i><\/p>'
-        
-        # Insertar después de la primera mención de TeXstudio
-        sed -i '/<h2>TeXstudio<\/h2>/a \        aboutText += "'"$CREDITS_TEXT"'";' "$ABOUT_FILE"
+        # Insertar créditos después de "Project home site:"
+        sed -i '/tr("Project home site:") + " <a href=\\"https:\/\/texstudio\.org\/\\">https:\/\/texstudio\.org\/<\/a><br>" +/a \
+                            "<br><b>TeXstudio Qt6 Build with Poppler</b><br>" +\
+                            "Custom build with Qt6 and Poppler support<br>" +\
+                            "Compiled by Manuel L\\u00f3pez Mateos<br>" +\
+                            "<a href=\\"https://github.com/mlmateos/texstudio-qt6-builds\\">https://github.com/mlmateos/texstudio-qt6-builds</a><br>" +\
+                            "<br><i>This is an unofficial build. TeXstudio \\u00a9 Benito van der Zander, Jan Sundermeyer, Daniel Braun, Tim Hoffmann.</i><br>" +' "$ABOUT_FILE"
         
         log "✅ Créditos añadidos al diálogo About"
+        
+        # Mostrar líneas modificadas
+        echo "   🔍 Líneas modificadas:"
+        grep -A5 "Project home site" "$ABOUT_FILE" | head -10 || warn "⚠️  No se encontraron créditos"
     else
-        log "ℹ️  Créditos ya presentes, omitiendo"
+        log "ℹ️  Créditos ya presentes"
     fi
 else
-    warn "⚠️  No se encontró src/aboutdialog.cpp, omitiendo créditos"
+    warn "⚠️  No se encontró src/aboutdialog.cpp"
 fi
 
 #===============================================================================
