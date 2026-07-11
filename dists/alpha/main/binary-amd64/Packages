@@ -7,10 +7,10 @@ Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-
 Recommends: texlive-latex-base, texlive-binaries, texlive-latex-recommended
 Suggests: texlive-full, biber, latexmk
 Filename: pool/texstudio-4.9.5-qt6-amd64.deb
-Size: 59216168
-MD5sum: a325221819bc747e525019e49e71cf26
-SHA1: 0de3c06798aeca3a02150d8d7315599927841264
-SHA256: 03be4627a542cb7ae162e50961ed8c86595618c467a5efde3a39adaa13cdf85e
+Size: 59215316
+MD5sum: a20cf11ce6bbcbfab1565462366f5ffa
+SHA1: c0b69ca6a7b6f0553b23395db5b2d4f8c6a6bea4
+SHA256: 33ce65c4cfcfab7bd47c860cfd51c5598337d0978fcaab02954f7e4266d33d6a
 Section: editors
 Priority: optional
 Homepage: https://www.texstudio.org/
