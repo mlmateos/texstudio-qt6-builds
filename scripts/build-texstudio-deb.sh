@@ -699,25 +699,25 @@ gzip -9c dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/
 
 # 2. Generar Packages para rama STABLE (solo versiones sin alpha/beta/rc)
 log "📋 Generando rama stable (solo versiones estables)..."
-> dists/stable/main/binary-amd64/Packages
 
-# Leemos el Packages completo y filtramos por bloques
-current_block=""
-while IFS= read -r line; do
-    if [[ "$line" =~ ^Filename: ]]; then
-        filename=$(echo "$line" | awk '{print $2}')
-        # Si el nombre del archivo NO contiene alpha, beta ni rc, es estable
-        if [[ "$filename" != *alpha* && "$filename" != *beta* && "$filename" != *rc* ]]; then
-            echo "$current_block" >> dists/stable/main/binary-amd64/Packages
-            echo "$line" >> dists/stable/main/binary-amd64/Packages
-            current_block=""
-        else
-            current_block="" # Descartar bloque inestable
-        fi
-    else
-        current_block+="$line"$'\n'
-    fi
-done < dists/alpha/main/binary-amd64/Packages
+# Usar awk para filtrar bloques que no contengan alpha/beta/rc en el Filename
+awk '
+BEGIN { RS=""; FS="\n" }
+{
+    # Buscar la línea Filename: en el bloque
+    for (i=1; i<=NF; i++) {
+        if ($i ~ /^Filename:/) {
+            filename = $i
+            # Si no contiene alpha, beta ni rc, imprimir el bloque
+            if (filename !~ /alpha/ && filename !~ /beta/ && filename !~ /rc/) {
+                print $0
+                print ""  # Línea vacía para separar bloques
+            }
+            break
+        }
+    }
+}
+' dists/alpha/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages
 
 # Comprimir la rama stable
 gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
