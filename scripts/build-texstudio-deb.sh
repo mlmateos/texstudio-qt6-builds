@@ -525,7 +525,7 @@ if [[ "$SIGN" == true ]]; then
     [[ -z "$GPG_KEY" ]] && GPG_KEY=$(gpg --list-secret-keys --keyid-format long | grep "^sec" | head -n1 | awk '{print $2}' | cut -d'/' -f2)
     log "Usando clave GPG: $GPG_KEY"
     set +e
-    gpg --default-key "$GPG_KEY" --detach-sign --armor "$DEB_FINAL"
+    gpg --default-key "$GPG_KEY" --yes --detach-sign --armor "$DEB_FINAL"
     set -e
     [[ -f "${DEB_FINAL}.asc" ]] && log "✅ Firma generada: ${DEB_FINAL}.asc"
 fi
