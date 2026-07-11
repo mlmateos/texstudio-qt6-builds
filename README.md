@@ -210,8 +210,8 @@ Both build scripts support the following options:
 
 All packages are signed with GPG. You can verify the signatures:
 
-    # Import the GPG key (replace YOUR_KEY_ID with the actual key ID)
-    gpg --keyserver keyserver.ubuntu.com --recv-keys YOUR_KEY_ID
+    # Import the GPG key
+    gpg --keyserver keyserver.ubuntu.com --recv-keys 783C12B9E7463154
 
     # Verify .deb signature
     gpg --verify texstudio-*.deb.asc texstudio-*.deb

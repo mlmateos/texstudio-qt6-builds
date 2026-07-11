@@ -700,21 +700,22 @@ gzip -9c dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/
 # 2. Generar Packages para rama STABLE (solo versiones sin alpha/beta/rc)
 log "📋 Generando rama stable (solo versiones estables)..."
 
-# Usar awk para filtrar bloques que no contengan alpha/beta/rc en el Filename
+# Usar awk para filtrar bloques correctamente
 awk '
-BEGIN { RS=""; FS="\n" }
+BEGIN { RS=""; ORS="\n\n" }
 {
-    # Buscar la línea Filename: en el bloque
+    is_stable = 1
+    has_filename = 0
     for (i=1; i<=NF; i++) {
         if ($i ~ /^Filename:/) {
-            filename = $i
-            # Si no contiene alpha, beta ni rc, imprimir el bloque
-            if (filename !~ /alpha/ && filename !~ /beta/ && filename !~ /rc/) {
-                print $0
-                print ""  # Línea vacía para separar bloques
+            has_filename = 1
+            if ($i ~ /alpha/ || $i ~ /beta/ || $i ~ /rc/) {
+                is_stable = 0
             }
-            break
         }
+    }
+    if (has_filename && is_stable) {
+        print $0
     }
 }
 ' dists/alpha/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages
