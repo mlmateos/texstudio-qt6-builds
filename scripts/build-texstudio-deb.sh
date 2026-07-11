@@ -700,25 +700,36 @@ gzip -9c dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/
 # 2. Generar Packages para rama STABLE (solo versiones sin alpha/beta/rc)
 log "📋 Generando rama stable (solo versiones estables)..."
 
-# Usar awk para filtrar bloques correctamente
-awk '
-BEGIN { RS=""; ORS="\n\n" }
-{
-    is_stable = 1
-    has_filename = 0
-    for (i=1; i<=NF; i++) {
-        if ($i ~ /^Filename:/) {
-            has_filename = 1
-            if ($i ~ /alpha/ || $i ~ /beta/ || $i ~ /rc/) {
-                is_stable = 0
-            }
-        }
-    }
-    if (has_filename && is_stable) {
-        print $0
-    }
-}
-' dists/alpha/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages
+# Usar Python para filtrar bloques correctamente
+python3 << 'PYEOF'
+import re
+
+# Leer el archivo Packages de alpha
+with open('dists/alpha/main/binary-amd64/Packages', 'r') as f:
+    content = f.read()
+
+# Dividir en bloques (separados por líneas en blanco)
+blocks = re.split(r'\n\n+', content.strip())
+
+# Filtrar solo los bloques estables
+stable_blocks = []
+for block in blocks:
+    if not block.strip():
+        continue
+    # Buscar la línea Filename
+    filename_match = re.search(r'^Filename:\s+(.+)$', block, re.MULTILINE)
+    if filename_match:
+        filename = filename_match.group(1)
+        # Si el filename NO contiene alpha, beta ni rc, es estable
+        if 'alpha' not in filename and 'beta' not in filename and 'rc' not in filename:
+            stable_blocks.append(block)
+
+# Escribir el archivo Packages de stable
+with open('dists/stable/main/binary-amd64/Packages', 'w') as f:
+    f.write('\n\n'.join(stable_blocks) + '\n')
+
+print(f"✅ Generado Packages stable con {len(stable_blocks)} paquete(s)")
+PYEOF
 
 # Comprimir la rama stable
 gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
