@@ -62,15 +62,15 @@ Package: texstudio
 Version: 4.9.6~alpha3-1
 Architecture: amd64
 Maintainer: Manuel Mateos <manuel@mateos.dev>
-Installed-Size: 373038
-Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-3t64 (>= 0.81.0), libqt6concurrent6 (>= 6.1.2), libqt6core5compat6 (>= 6.6.0), libqt6core6t64 (>= 6.8.2), libqt6dbus6 (>= 6.1.2), libqt6gui6 (>= 6.8.2), libqt6network6 (>= 6.4.0), libqt6printsupport6 (>= 6.1.2), libqt6qml6 (>= 6.6.0), libqt6svg6 (>= 6.6.0), libqt6widgets6 (>= 6.8.2), libqt6xml6 (>= 6.6.0), libquazip1-qt6-1t64 (>= 1.4), libstdc++6 (>= 14), libx11-6, zlib1g (>= 1:1.1.4)
+Installed-Size: 67961
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-3t64 (>= 0.81.0), libqt6concurrent6 (>= 6.1.2), libqt6core5compat6 (>= 6.6.0), libqt6core6t64 (>= 6.8.2), libqt6dbus6 (>= 6.1.2), libqt6gui6 (>= 6.8.2), libqt6network6 (>= 6.4.0), libqt6printsupport6 (>= 6.1.2), libqt6qml6 (>= 6.6.0), libqt6svg6 (>= 6.6.0), libqt6widgets6 (>= 6.8.2), libqt6xml6 (>= 6.6.0), libquazip1-qt6-1t64 (>= 1.4), libstdc++6 (>= 11), libx11-6, zlib1g (>= 1:1.1.4)
 Recommends: texlive-latex-base, texlive-binaries, texlive-latex-recommended
 Suggests: texlive-full, biber, latexmk
 Filename: pool/texstudio-4.9.6-alpha3-qt6-amd64.deb
-Size: 59354228
-MD5sum: 7db500ba5610b15a16e81fedb11afab4
-SHA1: 22f9a476bb26e8bd677a4659e82a7c329b6df4b3
-SHA256: 12eb4aebd0980139b46cfeff440b28f8f1facd6d63b849017cbb988e4a6e5a27
+Size: 19808544
+MD5sum: 158d9e46271434eed005e4319d6e1491
+SHA1: 0970a701b18e671dee4daa82977f5b86048e310b
+SHA256: bd34f765938c71b5b00b19d5b6ce7f5d89e64f849a5254afee13a8cdd0375262
 Section: editors
 Priority: optional
 Homepage: https://www.texstudio.org/
