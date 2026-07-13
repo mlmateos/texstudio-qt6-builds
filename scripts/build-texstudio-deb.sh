@@ -436,24 +436,39 @@ Description: Integrated writing environment for creating LaTeX documents
 EOF
 
 # debian/rules
-cat <<'EOF' > "$PROJECT_DIR/debian/rules"
+cat << 'EOF' > "$PROJECT_DIR/debian/rules"
 #!/usr/bin/make -f
 export DH_VERBOSE = 1
 export QT_SELECT = qt6
+export DH_COMPRESS_TYPE = xz
+export DH_COMPRESS_LEVEL = 9
 
 %:
 	dh $@ --buildsystem=cmake
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
-		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_BUILD_TYPE=MinSizeRel \
+		-DCMAKE_CXX_FLAGS="-Os -fdata-sections -ffunction-sections" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections" \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DQT_VERSION=6 \
 		-DTEXSTUDIO_BUILD_ADWAITA=ON \
 		-DTEXSTUDIO_ENABLE_TESTS=OFF
 
+override_dh_auto_install:
+	dh_auto_install
+	# 1. Strip agresivo del binario principal para reducir tamaño drásticamente
+	strip --strip-unneeded --discard-all debian/texstudio/usr/bin/texstudio || true
+	# 2. Eliminar iconos de alta resolución innecesarios (ahorra ~3-5 MB)
+	find debian/texstudio/usr/share/icons -mindepth 1 -maxdepth 1 -type d \( -name "256x256" -o -name "512x512" \) -exec rm -rf {} + 2>/dev/null || true
+
+override_dh_strip:
+	# Evitar la generación de paquetes de depuración (.ddeb) que ocupan espacio
+	dh_strip --no-automatic-dbgsym
+
 override_dh_auto_test:
-	# Tests deshabilitados para acelerar el build
+	# Tests deshabilitados para ahorrar tiempo de compilación
 EOF
 chmod +x "$PROJECT_DIR/debian/rules"
 
