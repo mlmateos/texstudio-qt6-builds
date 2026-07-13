@@ -213,15 +213,16 @@ else
         warn "⚠️  No se pudieron obtener tags, continuando con los existentes..."
     fi
 
-    if git show-ref --tags --verify --quiet "refs/tags/$BRANCH" 2>/dev/null; then
-        log "📌 Detectado TAG: $BRANCH"
-        git checkout -f "$BRANCH" 2>/dev/null || git checkout -f "tags/$BRANCH"
-        git reset --hard "$BRANCH"
-    else
-        log "📌 Detectada RAMA: $BRANCH"
-        git checkout -f "$BRANCH"
-        git reset --hard "origin/$BRANCH"
-    fi
+if git show-ref --tags --verify --quiet "refs/tags/$BRANCH" 2>/dev/null; then
+    log "📌 Detectado TAG: $BRANCH"
+    git checkout -f "$BRANCH" 2>/dev/null || git checkout -f "tags/$BRANCH"
+    git reset --hard "$BRANCH"
+else
+    log "📌 Detectada RAMA: $BRANCH"
+    # Forzar la creación/actualización de la rama local desde la remota
+    git fetch origin "$BRANCH" --depth 1 2>/dev/null || true
+    git checkout -B "$BRANCH" "origin/$BRANCH"
+fi
     cd - >/dev/null
 fi
 
