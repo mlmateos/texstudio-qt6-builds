@@ -682,10 +682,12 @@ if ! git diff-index --quiet HEAD -- 2>/dev/null; then
     STASHED=true
 fi
 
-# Cambiar a rama apt-repo
+# Cambiar a rama apt-repo y sincronizar con el remoto
 if ! git checkout apt-repo 2>/dev/null; then
     git checkout -b apt-repo origin/apt-repo || die "No se pudo cambiar a rama apt-repo"
 fi
+log "🔄 Sincronizando rama apt-repo con el remoto..."
+git pull origin apt-repo || warn "⚠️  No se pudo sincronizar apt-repo, intentando continuar..."
 
 # Copiar archivos a pool/
 cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
