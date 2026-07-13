@@ -458,11 +458,27 @@ override_dh_auto_configure:
 
 override_dh_auto_install:
 	dh_auto_install
-	# 1. Strip agresivo del binario principal para reducir tamaño drásticamente
+	
+	# 1. Strip agresivo del binario principal (ya verificado: reduce a ~22MB)
 	strip --strip-unneeded --discard-all debian/texstudio/usr/bin/texstudio || true
-	# 2. Eliminar iconos de alta resolución innecesarios (ahorra ~3-5 MB)
-	find debian/texstudio/usr/share/icons -mindepth 1 -maxdepth 1 -type d \( -name "256x256" -o -name "512x512" \) -exec rm -rf {} + 2>/dev/null || true
-
+	
+	# 2. Eliminar tesauros (.dat) pesados e innecesarios 
+	# (Mantenemos SOLO: en_US, es_ES, es_MX, fr_FR)
+	find debian/texstudio/usr/share/texstudio/ -name "th_*.dat" \
+		-not -name "*en_US*" -not -name "*es_ES*" \
+		-not -name "*es_MX*" -not -name "*fr_FR*" -delete || true
+	
+	# 3. Eliminar diccionarios (.dic/.aff) de idiomas menos comunes
+	# (Mantenemos SOLO: en_US, en_GB, es_ES, es_MX, fr_FR)
+	find debian/texstudio/usr/share/texstudio/ -type f \( -name "*.dic" -o -name "*.aff" \) \
+		-not -name "*en_US*" -not -name "*en_GB*" \
+		-not -name "*es_ES*" -not -name "*es_MX*" \
+		-not -name "*fr_FR*" -delete || true
+	
+	# 4. Eliminar iconos de alta resolución innecesarios (ahorra ~3-5 MB)
+	find debian/texstudio/usr/share/icons -mindepth 1 -maxdepth 1 -type d \
+		\( -name "256x256" -o -name "512x512" \) -exec rm -rf {} + 2>/dev/null || true
+		
 override_dh_strip:
 	# Evitar la generación de paquetes de depuración (.ddeb) que ocupan espacio
 	dh_strip --no-automatic-dbgsym
