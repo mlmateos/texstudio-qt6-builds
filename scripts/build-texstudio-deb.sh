@@ -219,9 +219,15 @@ if git show-ref --tags --verify --quiet "refs/tags/$BRANCH" 2>/dev/null; then
     git reset --hard "$BRANCH"
 else
     log "📌 Detectada RAMA: $BRANCH"
-    # Forzar la creación/actualización de la rama local desde la remota
+    # Asegurar que la rama remota está disponible localmente
     git fetch origin "$BRANCH" --depth 1 2>/dev/null || true
-    git checkout -B "$BRANCH" "origin/$BRANCH"
+    
+    # Crear o reiniciar la rama local apuntando a la remota o a FETCH_HEAD
+    if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+        git checkout -B "$BRANCH" "origin/$BRANCH"
+    else
+        git checkout -B "$BRANCH" "FETCH_HEAD"
+    fi
 fi
     cd - >/dev/null
 fi
