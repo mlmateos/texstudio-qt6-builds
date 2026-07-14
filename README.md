@@ -142,7 +142,7 @@ Both build scripts support the following options:
 | Option | Description |
 |--------|-------------|
 | `--clean` | Clean build directory before starting |
-| `--branch NAME` | Branch or tag to compile (e.g., `4.9.5`, `4.9.6beta2`, `master`) |
+| `--branch NAME` | Branch or tag to compile (e.g., `4.9.5`, `4.9.6beta3`, `master`) |
 | `--jobs N` | Number of parallel compilation threads (auto-detected by default) |
 | `--poppler` | Enable Poppler-Qt6 PDF viewer (highly recommended) |
 | `--sign` | Sign the resulting package with GPG |
@@ -157,7 +157,7 @@ Both build scripts support the following options:
     ./install-deps.sh
 
     # Build and publish a specific version
-    ./build-texstudio-deb.sh --branch 4.9.6beta2 --clean --poppler --sign --publish
+    ./build-texstudio-deb.sh --branch 4.9.6beta3 --clean --poppler --sign --publish
 
     # Quick rebuild (keeping source code)
     ./build-texstudio-deb.sh --clean --poppler --sign
@@ -189,7 +189,7 @@ Both build scripts support the following options:
 
 | Type | Version | Branch |
 |------|---------|--------|
-| 🟡 Development | 4.9.6-beta2 | `alpha` |
+| 🟡 Development | 4.9.6-beta3 | `alpha` |
 | 🟢 Stable | 4.9.5 | `stable`, `alpha` |
 
 ---
