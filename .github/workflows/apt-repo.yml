@@ -48,11 +48,14 @@
              dpkg-scanpackages pool /dev/null | gzip -9c > pool/Packages.gz
              dpkg-scanpackages pool /dev/null > pool/Packages
 
-         - name: Commit and push changes
-           run: |
-             cd apt-repo
-             git config user.name "github-actions[bot]"
-             git config user.email "github-actions[bot]@users.noreply.github.com"
-             git add pool/
-             git diff --cached --quiet || git commit -m "Update APT repository index for $TAG"
-             git push
+- name: Commit and push changes
+  run: |
+    cd apt-repo
+    git config user.name "github-actions[bot]"
+    git config user.email "github-actions[bot]@users.noreply.github.com"
+    git add pool/
+    git diff --cached --quiet || {
+      git commit -m "Update APT repository index for $TAG"
+      git pull --rebase origin apt-repo
+      git push origin apt-repo
+    }
