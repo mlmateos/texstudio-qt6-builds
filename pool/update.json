@@ -1,8 +1,8 @@
 [
   {
-    "ref":"refs/tags/4.9.6-rc1",
-    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy84.9.6-rc1",
-    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.6-rc1",
+    "ref":"refs/tags/4.9.6-rc2",
+    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy84.9.6-rc2",
+    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.6-rc2",
     "object":{
       "sha":"abc123def456789",
       "type":"commit",
