@@ -222,7 +222,7 @@ Both build scripts support the following options:
 
 | Type | Version | Branch |
 |------|---------|--------|
-|  Development | 4.9.6-rc1 | alpha |
+|  Development | 4.9.6-rc2 | alpha |
 | 🟢 Stable | 4.9.5 | stable, alpha |
 
 ## ️ System Requirements
