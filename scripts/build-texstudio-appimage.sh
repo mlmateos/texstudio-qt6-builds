@@ -456,9 +456,78 @@ exec "$HERE/usr/bin/texstudio" "$@"
 EOF
 chmod +x "$APPDIR/AppRun"
 
+#===============================================================================
+# EMPAQUETADO DE DEPENDENCIAS CRÍTICAS (QuaZip y Poppler)
+#===============================================================================
+log "📦 Empaquetando dependencias críticas para máxima portabilidad..."
+
+# 1. QuaZip (la que fallaba en Ubuntu 25.10)
+QUAZIP_CANDIDATES=(
+    "/usr/lib/x86_64-linux-gnu/libquazip1-qt6.so.1"
+    "/usr/lib/libquazip1-qt6.so.1"
+)
+FOUND_QUAZIP=false
+for lib_path in "${QUAZIP_CANDIDATES[@]}"; do
+    if [[ -f "$lib_path" ]]; then
+        log "✅ Encontrada QuaZip: $lib_path"
+        mkdir -p "$APPDIR/usr/lib"
+        cp -v "$lib_path" "$APPDIR/usr/lib/"
+        LIB_DIR=$(dirname "$lib_path")
+        LIB_BASE=$(basename "$lib_path")
+        LINK_PATH="$LIB_DIR/${LIB_BASE%.so.*}.so"
+        [[ -f "$LINK_PATH" ]] && cp -v "$LINK_PATH" "$APPDIR/usr/lib/"
+        FOUND_QUAZIP=true
+        break
+    fi
+done
+
+if [[ "$FOUND_QUAZIP" == false ]]; then
+    warn "⚠️ No se encontró libquazip1-qt6.so.1 en el sistema de compilación."
+else
+    log "✅ QuaZip incluida correctamente en la AppImage."
+fi
+
+# 2. Poppler-Qt6 (solo si se habilitó la opción --poppler)
+if [[ "$ENABLE_POPPLER" == true ]]; then
+    log "📦 Empaquetando dependencias de Poppler-Qt6..."
+    # Intentar obtener la ruta desde pkg-config, o usar rutas comunes
+    PKG_LIBDIR=$(pkg-config --variable=libdir poppler-qt6 2>/dev/null)
+    POPPLER_CANDIDATES=(
+        "/usr/lib/x86_64-linux-gnu/libpoppler-qt6.so.3"
+        "/usr/lib/x86_64-linux-gnu/libpoppler-qt6.so.1"
+        "/usr/lib/x86_64-linux-gnu/libpoppler-qt6.so"
+        "/usr/lib/libpoppler-qt6.so.3"
+        "/usr/lib/libpoppler-qt6.so.1"
+)
+    FOUND_POPPLER=false
+    for lib_path in "${POPPLER_CANDIDATES[@]}"; do
+        # Ignorar rutas vacías si pkg-config falla
+        [[ -z "$lib_path" || "$lib_path" == "/libpoppler-qt6.so.1" ]] && continue
+        
+        if [[ -f "$lib_path" ]]; then
+            log "✅ Encontrada Poppler: $lib_path"
+            mkdir -p "$APPDIR/usr/lib"
+            cp -v "$lib_path" "$APPDIR/usr/lib/"
+            LIB_DIR=$(dirname "$lib_path")
+            LIB_BASE=$(basename "$lib_path")
+            LINK_PATH="$LIB_DIR/${LIB_BASE%.so.*}.so"
+            [[ -f "$LINK_PATH" ]] && cp -v "$LINK_PATH" "$APPDIR/usr/lib/"
+            FOUND_POPPLER=true
+            break
+        fi
+    done
+    
+    if [[ "$FOUND_POPPLER" == false ]]; then
+        warn "⚠️ No se encontró libpoppler-qt6 para empaquetar."
+        warn "💡 Si usas --poppler, instala 'libpoppler-qt6-dev' en esta máquina de compilación."
+    else
+        log "✅ Poppler-Qt6 incluida en la AppImage."
+    fi
+fi
+
 # Validar desktop file
 if command -v desktop-file-validate >/dev/null 2>&1; then
-    desktop-file-validate "$APPDIR/texstudio.desktop" || warn "⚠️  desktop-file-validate falló"
+    desktop-file-validate "$APPDIR/texstudio.desktop" || warn "⚠️ desktop-file-validate falló"
 fi
 
 # Crear AppImage
