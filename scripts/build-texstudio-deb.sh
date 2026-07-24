@@ -223,11 +223,13 @@ else
     git fetch origin "$BRANCH" --depth 1 2>/dev/null || true
     
     # Crear o reiniciar la rama local apuntando a la remota o a FETCH_HEAD
-    if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
-        git checkout -B "$BRANCH" "origin/$BRANCH"
-    else
-        git checkout -B "$BRANCH" "FETCH_HEAD"
-    fi
+ if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+ git checkout -f -B "$BRANCH" "origin/$BRANCH"
+ git reset --hard "origin/$BRANCH"
+ else
+ git checkout -f -B "$BRANCH" "FETCH_HEAD"
+ git reset --hard "FETCH_HEAD"
+ fi
 fi
     cd - >/dev/null
 fi
