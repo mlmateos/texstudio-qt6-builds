@@ -776,8 +776,76 @@ PYEOF
 # Comprimir la rama stable
 gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
 
-STABLE_COUNT=$(grep -c '^Package:' dists/stable/main/binary-amd64/Packages 2>/dev/null || echo "0")
-log "✅ Rama stable generada con $STABLE_COUNT paquete(s) estable(s)"
+#===============================================================================
+# GENERAR ARCHIVOS DE METADATOS (Release, Icons, Translation)
+#===============================================================================
+log "📝 Generando metadatos del repositorio (Release, Icons, Translation)..."
+
+# 1. Crear archivo Release para STABLE
+cat > dists/stable/Release << 'EOF'
+Origin: mlmateos
+Label: TeXstudio Qt6 Builds
+Suite: stable
+Codename: stable
+Date: $(date -R)
+Architectures: amd64
+Components: main
+Description: TeXstudio Qt6 Builds Repository
+Acquire-By-Hash: no
+EOF
+
+# Actualizar la fecha correctamente
+sed -i "s|Date:.*|Date: $(date -R)|" dists/stable/Release
+
+# 2. Crear archivo Release para ALPHA
+cat > dists/alpha/Release << 'EOF'
+Origin: mlmateos
+Label: TeXstudio Qt6 Builds
+Suite: alpha
+Codename: alpha
+Date: $(date -R)
+Architectures: amd64
+Components: main
+Description: TeXstudio Qt6 Builds Repository (Alpha/Pre-release)
+Acquire-By-Hash: no
+EOF
+
+sed -i "s|Date:.*|Date: $(date -R)|" dists/alpha/Release
+
+# 3. Crear archivos de traducción mínimos (evita "Ign: Translation-en")
+mkdir -p dists/stable/main/i18n
+mkdir -p dists/alpha/main/i18n
+echo "TeXstudio Qt6 Repository" > dists/stable/main/i18n/Translation-en
+echo "TeXstudio Qt6 Repository (Alpha)" > dists/alpha/main/i18n/Translation-en
+gzip -9f dists/stable/main/i18n/Translation-en
+gzip -9f dists/alpha/main/i18n/Translation-en
+
+# 4. Crear archivos de iconos mínimos (evita "Ign: Icons")
+# Iconos 48x48 para STABLE
+mkdir -p temp-icons-48
+echo "TeXstudio Icons" > temp-icons-48/README
+tar -czf dists/stable/main/icons-48x48.tar.gz -C temp-icons-48 README
+rm -rf temp-icons-48
+
+# Iconos 64x64 para STABLE
+mkdir -p temp-icons-64
+echo "TeXstudio Icons" > temp-icons-64/README
+tar -czf dists/stable/main/icons-64x64.tar.gz -C temp-icons-64 README
+rm -rf temp-icons-64
+
+# Iconos 48x48 para ALPHA
+mkdir -p temp-icons-48
+echo "TeXstudio Icons (Alpha)" > temp-icons-48/README
+tar -czf dists/alpha/main/icons-48x48.tar.gz -C temp-icons-48 README
+rm -rf temp-icons-48
+
+# Iconos 64x64 para ALPHA
+mkdir -p temp-icons-64
+echo "TeXstudio Icons (Alpha)" > temp-icons-64/README
+tar -czf dists/alpha/main/icons-64x64.tar.gz -C temp-icons-64 README
+rm -rf temp-icons-64
+
+log "✅ Metadatos del repositorio generados"
 
 # Crear update.json (formato GitHub API)
 log "🔄 Actualizando update.json..."
