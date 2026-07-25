@@ -1,0 +1,9 @@
+Origin: mlmateos
+Label: TeXstudio Qt6 Builds
+Suite: alpha
+Codename: alpha
+Date: Sat, 25 Jul 2026 08:46:53 -0600
+Architectures: amd64
+Components: main
+Description: TeXstudio Qt6 Builds Repository (Alpha/Pre-release)
+Acquire-By-Hash: no
