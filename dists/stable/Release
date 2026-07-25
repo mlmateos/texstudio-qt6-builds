@@ -2,7 +2,7 @@ Origin: mlmateos
 Label: TeXstudio Qt6 Builds
 Suite: stable
 Codename: stable
-Date: Sat, 25 Jul 2026 08:46:53 -0600
+Date: Sat, 25 Jul 2026 08:54:42 -0600
 Architectures: amd64
 Components: main
 Description: TeXstudio Qt6 Builds Repository
