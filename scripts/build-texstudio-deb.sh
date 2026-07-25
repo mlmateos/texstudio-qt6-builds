@@ -781,53 +781,34 @@ gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd6
 #===============================================================================
 log "📝 Generando metadatos del repositorio (Release, Icons, Translation)..."
 
-# 1. Crear archivos de traducción mínimos (evita "Ign: Translation-en")
+# 1. Crear archivos de traducción mínimos (comprimidos en .gz)
 mkdir -p dists/stable/main/i18n
 mkdir -p dists/alpha/main/i18n
-echo "TeXstudio Qt6 Repository" > dists/stable/main/i18n/Translation-en
-echo "TeXstudio Qt6 Repository (Alpha)" > dists/alpha/main/i18n/Translation-en
-gzip -9f dists/stable/main/i18n/Translation-en
-gzip -9f dists/alpha/main/i18n/Translation-en
+echo "TeXstudio Qt6 Repository" | gzip -9c > dists/stable/main/i18n/Translation-en.gz
+echo "TeXstudio Qt6 Repository (Alpha)" | gzip -9c > dists/alpha/main/i18n/Translation-en.gz
 
-# 2. Crear archivos de iconos mínimos (evita "Ign: Icons")
+# 2. Crear archivos de iconos mínimos (tar.gz)
+mkdir -p temp-icons
+echo "TeXstudio Icons" > temp-icons/README
 for BRANCH in stable alpha; do
-    mkdir -p "temp-icons-48"
-    echo "TeXstudio Icons" > "temp-icons-48/README"
-    tar -czf "dists/${BRANCH}/main/icons-48x48.tar.gz" -C "temp-icons-48" README
-    rm -rf "temp-icons-48"
-
-    mkdir -p "temp-icons-64"
-    echo "TeXstudio Icons" > "temp-icons-64/README"
-    tar -czf "dists/${BRANCH}/main/icons-64x64.tar.gz" -C "temp-icons-64" README
-    rm -rf "temp-icons-64"
+    tar -czf "dists/${BRANCH}/main/icons-48x48.tar.gz" -C temp-icons README
+    tar -czf "dists/${BRANCH}/main/icons-64x64.tar.gz" -C temp-icons README
 done
+rm -rf temp-icons
 
 # 3. Generar archivo Release CON HASHES usando apt-ftparchive
-# (Esto es CRUCIAL: apt rechaza o corrompe la caché si faltan los hashes)
+# (Esto es CRUCIAL: apt-ftparchive genera el formato exacto, la fecha válida y los hashes que apt requiere)
 for BRANCH in stable alpha; do
     log "🔐 Generando Release con hashes para rama: $BRANCH"
-    
     cd "dists/${BRANCH}"
     
-    # Generar los hashes de todos los archivos en el directorio actual y subdirectorios
-    apt-ftparchive release . > Release.tmp
+    # Generar el archivo Release completo y válido con todos los hashes
+    apt-ftparchive release . > Release
     
-    # Crear el archivo Release final con los campos descriptivos + los hashes
-    cat << EOF > Release
-Origin: mlmateos
-Label: TeXstudio Qt6 Builds
-Suite: ${BRANCH}
-Codename: ${BRANCH}
-Date: $(date -R)
-Architectures: amd64
-Components: main
-Description: TeXstudio Qt6 Builds Repository (${BRANCH^})
-Acquire-By-Hash: no
-EOF
-    
-    # Concatenar los hashes generados al final del archivo
-    cat Release.tmp >> Release
-    rm Release.tmp
+    # Personalizar solo los campos de texto para que se vea profesional (sin romper la fecha o los hashes)
+    sed -i 's/^Origin:.*$/Origin: mlmateos/' Release
+    sed -i 's/^Label:.*$/Label: TeXstudio Qt6 Builds/' Release
+    sed -i "s|^Description:.*$|Description: TeXstudio Qt6 Builds Repository (${BRANCH^})|" Release
     
     cd ../..
 done
