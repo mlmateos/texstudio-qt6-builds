@@ -1,5 +1,3 @@
----
-
 ⚠️ **Unofficial Builds** — These are NOT official TeXstudio builds. This is an independent project providing custom builds with Qt6 and Poppler for modern Linux distributions. The official TeXstudio project does not endorse or support these builds.  
 For official builds, visit: https://www.texstudio.org/
 
