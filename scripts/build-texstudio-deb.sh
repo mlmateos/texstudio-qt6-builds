@@ -698,7 +698,7 @@ if [[ "$PUBLISH" == true ]]; then
     done
 fi
 #===============================================================================
-# INTEGRACIÓN CON REPOSITORIO APT (CON RAMAS STABLE/ALPHA)
+# INTEGRACIÓN CON REPOSITORIO APT (CON RAMAS STABLE/ALPHA Y FIRMA GPG)
 #===============================================================================
 header "📦 INTEGRANDO CON REPOSITORIO APT"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -710,7 +710,7 @@ cd "$APT_REPO_DIR"
 STASHED=false
 if ! git diff-index --quiet HEAD -- 2>/dev/null; then
     log "💾 Guardando cambios locales de master (git stash)..."
-    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️ No se pudo hacer stash"
+    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️  No se pudo hacer stash"
     STASHED=true
 fi
 
@@ -719,7 +719,7 @@ if ! git checkout apt-repo 2>/dev/null; then
     git checkout -b apt-repo origin/apt-repo || die "No se pudo cambiar a rama apt-repo"
 fi
 log "🔄 Sincronizando rama apt-repo con el remoto..."
-git pull origin apt-repo || warn "⚠️ No se pudo sincronizar apt-repo, intentando continuar..."
+git pull origin apt-repo || warn "⚠️  No se pudo sincronizar apt-repo, intentando continuar..."
 
 # Copiar archivos a pool/
 cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
@@ -736,7 +736,6 @@ mkdir -p dists/alpha/main/i18n
 log "📋 Generando rama alpha (todas las versiones)..."
 dpkg-scanpackages --multiversion pool /dev/null > dists/alpha/main/binary-amd64/Packages
 printf '\n' >> dists/alpha/main/binary-amd64/Packages
-# ¡IMPORTANTE! La bandera -n evita guardar el timestamp, previniendo errores de 1 byte en el tamaño
 gzip -9cn dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/Packages.gz
 
 # 2. Generar Packages para rama STABLE
@@ -759,7 +758,6 @@ with open('dists/stable/main/binary-amd64/Packages', 'w') as f:
     f.write('\n'.join(stable_blocks) + '\n')
 print(f"✅ Generado Packages stable con {len(stable_blocks)} paquete(s)")
 PYEOF
-
 printf '\n' >> dists/stable/main/binary-amd64/Packages
 gzip -9cn dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
 
@@ -775,7 +773,7 @@ for BRANCH in stable alpha; do
 done
 rm -rf temp-icons
 
-# 4. Generar archivo Release CON HASHES CORRECTOS Y CAMPOS EXPLÍCITOS
+# 4. Generar archivo Release CON HASHES Y FIRMA GPG (ELIMINA LOS Ign: RESTANTES)
 for BRANCH in stable alpha; do
     log "🔐 Generando Release con hashes válidos para rama: $BRANCH"
     cd "dists/${BRANCH}"
@@ -798,10 +796,24 @@ EOF
     
     # Concatenar los hashes al final (esto es lo que valida apt)
     cat Release.hashes >> Release
-    rm Release.hashes
     
+    # 🔐 FIRMAR EL REPOSITORIO (Elimina los Ign: de InRelease y Release.gpg)
+    if [[ "$SIGN" == true && -n "$GPG_KEY" ]]; then
+        log "🔐 Firmando archivo Release de la rama $BRANCH con GPG ($GPG_KEY)..."
+        # Generar firma separada (Release.gpg)
+        gpg --default-key "$GPG_KEY" --batch --yes --armor --detach-sign -o Release.gpg Release
+        # Generar firma en claro (InRelease)
+        gpg --default-key "$GPG_KEY" --batch --yes --clearsign -o InRelease Release
+        log "✅ Release firmado correctamente"
+    else
+        log "ℹ️  Firma GPG del repositorio omitida (usa --sign y --gpg-key ID para habilitarla)"
+    fi
+    
+    rm Release.hashes
     cd ../..
 done
+
+# Crear update.json (formato GitHub API)
 
 # Crear update.json
 log "🔄 Actualizando update.json..."
