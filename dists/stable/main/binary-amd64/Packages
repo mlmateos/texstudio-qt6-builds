@@ -36,10 +36,10 @@ Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-
 Recommends: texlive-latex-base, texlive-binaries, texlive-latex-recommended
 Suggests: texlive-full, biber, latexmk
 Filename: pool/texstudio-4.9.6-qt6-amd64.deb
-Size: 19828064
-MD5sum: 20596a1ea06ce8f6013081323d8a6a9a
-SHA1: a444115078ee42304c120a74ac0519138c796f43
-SHA256: 65aeabf1df8466957941c9a2bc29b99eb367d3a56ff86d9deece049cfe459dcd
+Size: 19826932
+MD5sum: 402c90376c9780d748457e9abcae42b7
+SHA1: 924f70033381cff08300dfc136d478b485ef33db
+SHA256: 4c0bdca3f98ea5bcfdcff87b10f4df8c53accd64d04f854a37825adb1b80488b
 Section: editors
 Priority: optional
 Homepage: https://www.texstudio.org/
@@ -56,3 +56,4 @@ Description: Integrated writing environment for creating LaTeX documents
   * Built on Qt6 for modern UI/UX
  .
  This is a custom build with Qt6 and Poppler support by Manuel López Mateos.
+

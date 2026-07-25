@@ -8,15 +8,5 @@
       "type":"commit",
       "url":"https://api.github.com/repos/texstudio-org/texstudio/git/commits/abc123def456789"
     }
-  },
-  {
-    "ref":"refs/tags/4.9.5",
-    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy80LjkuNQ==",
-    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.5",
-    "object":{
-      "sha":"def456abc789012",
-      "type":"commit",
-      "url":"https://api.github.com/repos/texstudio-org/texstudio/git/commits/def456abc789012"
-    }
   }
 ]
