@@ -703,7 +703,6 @@ fi
 header "📦 INTEGRANDO CON REPOSITORIO APT"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APT_REPO_DIR="$REPO_ROOT"
-
 log "Copiando archivos al repositorio APT..."
 cd "$APT_REPO_DIR"
 
@@ -711,7 +710,7 @@ cd "$APT_REPO_DIR"
 STASHED=false
 if ! git diff-index --quiet HEAD -- 2>/dev/null; then
     log "💾 Guardando cambios locales de master (git stash)..."
-    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️  No se pudo hacer stash"
+    git stash push -m "Auto-stash by build script $(date +%Y%m%d-%H%M%S)" || warn "⚠️ No se pudo hacer stash"
     STASHED=true
 fi
 
@@ -720,74 +719,54 @@ if ! git checkout apt-repo 2>/dev/null; then
     git checkout -b apt-repo origin/apt-repo || die "No se pudo cambiar a rama apt-repo"
 fi
 log "🔄 Sincronizando rama apt-repo con el remoto..."
-git pull origin apt-repo || warn "⚠️  No se pudo sincronizar apt-repo, intentando continuar..."
+git pull origin apt-repo || warn "⚠️ No se pudo sincronizar apt-repo, intentando continuar..."
 
 # Copiar archivos a pool/
 cp "$REPO_ROOT/scripts/$DEB_FINAL" pool/
 [[ -f "$REPO_ROOT/scripts/${DEB_FINAL}.asc" ]] && cp "$REPO_ROOT/scripts/${DEB_FINAL}.asc" pool/
 
-# Crear estructura de ramas (dists/stable y dists/alpha)
+# Crear estructura de ramas
 log "📂 Creando estructura de ramas (stable/alpha)..."
 mkdir -p dists/stable/main/binary-amd64
 mkdir -p dists/alpha/main/binary-amd64
+mkdir -p dists/stable/main/i18n
+mkdir -p dists/alpha/main/i18n
 
-# 1. Generar Packages para rama ALPHA (todos los paquetes, incluyendo múltiples versiones)
+# 1. Generar Packages para rama ALPHA
 log "📋 Generando rama alpha (todas las versiones)..."
-
-# Generar Packages usando dpkg-scanpackages con --multiversion directamente sobre pool/
 dpkg-scanpackages --multiversion pool /dev/null > dists/alpha/main/binary-amd64/Packages
+printf '\n' >> dists/alpha/main/binary-amd64/Packages
+# ¡IMPORTANTE! La bandera -n evita guardar el timestamp, previniendo errores de 1 byte en el tamaño
+gzip -9cn dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/Packages.gz
 
-gzip -9c dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64/Packages.gz
-
-# 2. Generar Packages para rama STABLE (solo versiones sin alpha/beta/rc)
+# 2. Generar Packages para rama STABLE
 log "📋 Generando rama stable (solo versiones estables)..."
-
-# Usar Python para filtrar bloques correctamente
 python3 << 'PYEOF'
 import re
-
-# Leer el archivo Packages de alpha
 with open('dists/alpha/main/binary-amd64/Packages', 'r') as f:
     content = f.read()
-
-# Dividir en bloques (separados por líneas en blanco)
 blocks = re.split(r'\n\n+', content.strip())
-
-# Filtrar solo los bloques estables
 stable_blocks = []
 for block in blocks:
-    if not block.strip():
-        continue
-    # Buscar la línea Filename
+    if not block.strip(): continue
     filename_match = re.search(r'^Filename:\s+(.+)$', block, re.MULTILINE)
     if filename_match:
         filename = filename_match.group(1)
-        # Si el filename NO contiene alpha, beta ni rc, es estable
         if 'alpha' not in filename and 'beta' not in filename and 'rc' not in filename:
             stable_blocks.append(block)
 
-# Escribir el archivo Packages de stable
 with open('dists/stable/main/binary-amd64/Packages', 'w') as f:
-    f.write('\n\n'.join(stable_blocks) + '\n')
-
+    f.write('\n'.join(stable_blocks) + '\n')
 print(f"✅ Generado Packages stable con {len(stable_blocks)} paquete(s)")
 PYEOF
 
-# Comprimir la rama stable
-gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
+printf '\n' >> dists/stable/main/binary-amd64/Packages
+gzip -9cn dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
 
-#===============================================================================
-# GENERAR ARCHIVOS DE METADATOS (Release, Icons, Translation) CON HASHES
-#===============================================================================
-log "📝 Generando metadatos del repositorio (Release, Icons, Translation)..."
-
-# 1. Crear archivos de traducción mínimos (comprimidos en .gz)
-mkdir -p dists/stable/main/i18n
-mkdir -p dists/alpha/main/i18n
+# 3. Crear archivos de traducción e iconos (evita warnings de apt)
 echo "TeXstudio Qt6 Repository" | gzip -9c > dists/stable/main/i18n/Translation-en.gz
 echo "TeXstudio Qt6 Repository (Alpha)" | gzip -9c > dists/alpha/main/i18n/Translation-en.gz
 
-# 2. Crear archivos de iconos mínimos (tar.gz)
 mkdir -p temp-icons
 echo "TeXstudio Icons" > temp-icons/README
 for BRANCH in stable alpha; do
@@ -796,26 +775,35 @@ for BRANCH in stable alpha; do
 done
 rm -rf temp-icons
 
-# 3. Generar archivo Release CON HASHES usando apt-ftparchive
-# (Esto es CRUCIAL: apt-ftparchive genera el formato exacto, la fecha válida y los hashes que apt requiere)
+# 4. Generar archivo Release CON HASHES CORRECTOS Y CAMPOS EXPLÍCITOS
 for BRANCH in stable alpha; do
-    log "🔐 Generando Release con hashes para rama: $BRANCH"
+    log "🔐 Generando Release con hashes válidos para rama: $BRANCH"
     cd "dists/${BRANCH}"
     
-    # Generar el archivo Release completo y válido con todos los hashes
-    apt-ftparchive release . > Release
+    # Generar solo los hashes de todos los archivos presentes
+    apt-ftparchive release . > Release.hashes
     
-    # Personalizar solo los campos de texto para que se vea profesional (sin romper la fecha o los hashes)
-    sed -i 's/^Origin:.*$/Origin: mlmateos/' Release
-    sed -i 's/^Label:.*$/Label: TeXstudio Qt6 Builds/' Release
-    sed -i "s|^Description:.*$|Description: TeXstudio Qt6 Builds Repository (${BRANCH^})|" Release
+    # Crear el archivo Release final con los campos que apt exige (incluyendo Suite y Codename)
+    cat << EOF > Release
+Origin: mlmateos
+Label: TeXstudio Qt6 Builds
+Suite: ${BRANCH}
+Codename: ${BRANCH}
+Date: $(date -R)
+Architectures: amd64
+Components: main
+Description: TeXstudio Qt6 Builds Repository (${BRANCH^})
+Acquire-By-Hash: no
+EOF
+    
+    # Concatenar los hashes al final (esto es lo que valida apt)
+    cat Release.hashes >> Release
+    rm Release.hashes
     
     cd ../..
 done
 
-log "✅ Metadatos del repositorio generados correctamente con hashes."
-
-# Crear update.json (formato GitHub API)
+# Crear update.json
 log "🔄 Actualizando update.json..."
 cat > pool/update.json << EOF
 [
@@ -828,32 +816,20 @@ cat > pool/update.json << EOF
       "type":"commit",
       "url":"https://api.github.com/repos/texstudio-org/texstudio/git/commits/abc123def456789"
     }
-  },
-  {
-    "ref":"refs/tags/4.9.5",
-    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy80LjkuNQ==",
-    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/4.9.5",
-    "object":{
-      "sha":"def456abc789012",
-      "type":"commit",
-      "url":"https://api.github.com/repos/texstudio-org/texstudio/git/commits/def456abc789012"
-    }
   }
 ]
 EOF
 
 # Commit y push en la rama apt-repo
 git add -f pool/ dists/
-git commit -m "Add TeXstudio $VER to APT repository (stable/alpha branches)" || log "ℹ️  No hay cambios para commitear"
+git commit -m "fix: APT repo metadata with explicit Suite/Codename and deterministic gzip (-n)" || log "ℹ️ No hay cambios para commitear"
 git push origin apt-repo
 
 # Volver a master
 git checkout master
-
-# Restaurar cambios locales de master si se hicieron stash
 if [[ "$STASHED" == true ]]; then
     log "🔄 Restaurando cambios locales de master (git stash pop)..."
-    git stash pop || warn "️  No se pudo restaurar stash automáticamente. Usa 'git stash pop' manualmente."
+    git stash pop || warn "⚠️ No se pudo restaurar stash automáticamente. Usa 'git stash pop' manualmente."
 fi
 
 log "✅ Archivos añadidos al repositorio APT"
