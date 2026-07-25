@@ -777,42 +777,11 @@ PYEOF
 gzip -9c dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
 
 #===============================================================================
-# GENERAR ARCHIVOS DE METADATOS (Release, Icons, Translation)
+# GENERAR ARCHIVOS DE METADATOS (Release, Icons, Translation) CON HASHES
 #===============================================================================
 log "📝 Generando metadatos del repositorio (Release, Icons, Translation)..."
 
-# 1. Crear archivo Release para STABLE
-cat > dists/stable/Release << 'EOF'
-Origin: mlmateos
-Label: TeXstudio Qt6 Builds
-Suite: stable
-Codename: stable
-Date: $(date -R)
-Architectures: amd64
-Components: main
-Description: TeXstudio Qt6 Builds Repository
-Acquire-By-Hash: no
-EOF
-
-# Actualizar la fecha correctamente
-sed -i "s|Date:.*|Date: $(date -R)|" dists/stable/Release
-
-# 2. Crear archivo Release para ALPHA
-cat > dists/alpha/Release << 'EOF'
-Origin: mlmateos
-Label: TeXstudio Qt6 Builds
-Suite: alpha
-Codename: alpha
-Date: $(date -R)
-Architectures: amd64
-Components: main
-Description: TeXstudio Qt6 Builds Repository (Alpha/Pre-release)
-Acquire-By-Hash: no
-EOF
-
-sed -i "s|Date:.*|Date: $(date -R)|" dists/alpha/Release
-
-# 3. Crear archivos de traducción mínimos (evita "Ign: Translation-en")
+# 1. Crear archivos de traducción mínimos (evita "Ign: Translation-en")
 mkdir -p dists/stable/main/i18n
 mkdir -p dists/alpha/main/i18n
 echo "TeXstudio Qt6 Repository" > dists/stable/main/i18n/Translation-en
@@ -820,32 +789,50 @@ echo "TeXstudio Qt6 Repository (Alpha)" > dists/alpha/main/i18n/Translation-en
 gzip -9f dists/stable/main/i18n/Translation-en
 gzip -9f dists/alpha/main/i18n/Translation-en
 
-# 4. Crear archivos de iconos mínimos (evita "Ign: Icons")
-# Iconos 48x48 para STABLE
-mkdir -p temp-icons-48
-echo "TeXstudio Icons" > temp-icons-48/README
-tar -czf dists/stable/main/icons-48x48.tar.gz -C temp-icons-48 README
-rm -rf temp-icons-48
+# 2. Crear archivos de iconos mínimos (evita "Ign: Icons")
+for BRANCH in stable alpha; do
+    mkdir -p "temp-icons-48"
+    echo "TeXstudio Icons" > "temp-icons-48/README"
+    tar -czf "dists/${BRANCH}/main/icons-48x48.tar.gz" -C "temp-icons-48" README
+    rm -rf "temp-icons-48"
 
-# Iconos 64x64 para STABLE
-mkdir -p temp-icons-64
-echo "TeXstudio Icons" > temp-icons-64/README
-tar -czf dists/stable/main/icons-64x64.tar.gz -C temp-icons-64 README
-rm -rf temp-icons-64
+    mkdir -p "temp-icons-64"
+    echo "TeXstudio Icons" > "temp-icons-64/README"
+    tar -czf "dists/${BRANCH}/main/icons-64x64.tar.gz" -C "temp-icons-64" README
+    rm -rf "temp-icons-64"
+done
 
-# Iconos 48x48 para ALPHA
-mkdir -p temp-icons-48
-echo "TeXstudio Icons (Alpha)" > temp-icons-48/README
-tar -czf dists/alpha/main/icons-48x48.tar.gz -C temp-icons-48 README
-rm -rf temp-icons-48
+# 3. Generar archivo Release CON HASHES usando apt-ftparchive
+# (Esto es CRUCIAL: apt rechaza o corrompe la caché si faltan los hashes)
+for BRANCH in stable alpha; do
+    log "🔐 Generando Release con hashes para rama: $BRANCH"
+    
+    cd "dists/${BRANCH}"
+    
+    # Generar los hashes de todos los archivos en el directorio actual y subdirectorios
+    apt-ftparchive release . > Release.tmp
+    
+    # Crear el archivo Release final con los campos descriptivos + los hashes
+    cat << EOF > Release
+Origin: mlmateos
+Label: TeXstudio Qt6 Builds
+Suite: ${BRANCH}
+Codename: ${BRANCH}
+Date: $(date -R)
+Architectures: amd64
+Components: main
+Description: TeXstudio Qt6 Builds Repository (${BRANCH^})
+Acquire-By-Hash: no
+EOF
+    
+    # Concatenar los hashes generados al final del archivo
+    cat Release.tmp >> Release
+    rm Release.tmp
+    
+    cd ../..
+done
 
-# Iconos 64x64 para ALPHA
-mkdir -p temp-icons-64
-echo "TeXstudio Icons (Alpha)" > temp-icons-64/README
-tar -czf dists/alpha/main/icons-64x64.tar.gz -C temp-icons-64 README
-rm -rf temp-icons-64
-
-log "✅ Metadatos del repositorio generados"
+log "✅ Metadatos del repositorio generados correctamente con hashes."
 
 # Crear update.json (formato GitHub API)
 log "🔄 Actualizando update.json..."
