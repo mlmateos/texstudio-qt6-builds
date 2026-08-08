@@ -2,37 +2,37 @@ Origin: mlmateos
 Label: TeXstudio Qt6 Builds
 Suite: stable
 Codename: stable
-Date: Sat, 08 Aug 2026 14:52:16 -0600
+Date: Sat, 08 Aug 2026 14:59:38 -0600
 Architectures: amd64
 Components: main
 Description: TeXstudio Qt6 Builds Repository (Stable)
 Acquire-By-Hash: no
-Date: Sat, 08 Aug 2026 20:52:16 +0000
+Date: Sat, 08 Aug 2026 20:59:38 +0000
 MD5Sum:
- 8a487a4239a6f1a18c74aafc0c56dbd0             2898 Release
+ ec379698bf49e2439d1fc2dd6803d464             2898 Release
  11f94329c385911d8a762abb94046898             3081 main/binary-amd64/Packages
  4770c66f383c1f7ed3797b68af31a4b0              988 main/binary-amd64/Packages.gz
  7e543aeb95cf9a5ae879d1f31573b8b9               45 main/i18n/Translation-en.gz
- 58f714c4c2b0fb160ac41936088c2acd              145 main/icons-48x48.tar.gz
- 58f714c4c2b0fb160ac41936088c2acd              145 main/icons-64x64.tar.gz
+ db7399e48aa3102dde1a11f55df8e35b              144 main/icons-48x48.tar.gz
+ db7399e48aa3102dde1a11f55df8e35b              144 main/icons-64x64.tar.gz
 SHA1:
- c3e1bfe334f07c29fee9a56eff15366fef2fa7e7             2898 Release
+ 1830b6bc35d2dbcb5eb5f1c8d51a18d1456c64a2             2898 Release
  195b48b16d9fe9295b603ea45d8ab50aa5b69a75             3081 main/binary-amd64/Packages
  a7f158aab142201500e6575f108dabf6adc2e9a0              988 main/binary-amd64/Packages.gz
  3842772ceb29757ec335e9694b4b82b625aa90bf               45 main/i18n/Translation-en.gz
- 6ce10717cef0c4a8d7865f4fb7079b21f511ea9c              145 main/icons-48x48.tar.gz
- 6ce10717cef0c4a8d7865f4fb7079b21f511ea9c              145 main/icons-64x64.tar.gz
+ b7f740ce21a183917f1aa5da319c21758057840e              144 main/icons-48x48.tar.gz
+ b7f740ce21a183917f1aa5da319c21758057840e              144 main/icons-64x64.tar.gz
 SHA256:
- c5330faff052ace2448db7b6fea3eaa3e11519a6279ceb18a4460e80ad99bc11             2898 Release
+ 5d87eb2062523b3838a8bd92bffc4bdcd70eb08549fa2b21910a652c8eec302d             2898 Release
  534501da79865f4d56b8cea074045059a26814462a238c94583de079f785f506             3081 main/binary-amd64/Packages
  a4657c4374b323b79216e1dcd1f167ceb41fd0cba26e776da68aeaf8a8b7c312              988 main/binary-amd64/Packages.gz
  ae1f7858b28ea388f59c4e286ea0266af77d575f7f349047557a6c7ddc5e5f4a               45 main/i18n/Translation-en.gz
- 880d77b36ef8aea36cbb6c657cd9485d3af414cc406c8513edfdd894c33de83f              145 main/icons-48x48.tar.gz
- 880d77b36ef8aea36cbb6c657cd9485d3af414cc406c8513edfdd894c33de83f              145 main/icons-64x64.tar.gz
+ 833fec4b8e63959a6f269dd0f17842641f4a99e9593d6a552b535a1e5e41c76b              144 main/icons-48x48.tar.gz
+ 833fec4b8e63959a6f269dd0f17842641f4a99e9593d6a552b535a1e5e41c76b              144 main/icons-64x64.tar.gz
 SHA512:
- 0cb9f6b2d42b462b6c7b8e44b0c8686d65c08f569547d1f8d9ea6b4dd1f18cf8a5f6ae20f564e8dc2cbfb0986795493be85ab6df8e8b72d310ccdadd129a6a80             2898 Release
+ da8a3d39ead6e834a9011e88e3d7430d69cb7036d3a678e1fdfbfa9f7c404f5e22c61a14b4b315bb4dddea615f68149f4c44b1f2914cf6e3c6185807ee37fe52             2898 Release
  422715726d6b849118dce58955d5497b26f06ccd12c5780e8058b21bd3a94cf8a1af1763ee3875ac87619379fe8a06b3568817149c74b6fa5115c94bc936138c             3081 main/binary-amd64/Packages
  97d6bf18aa81b72c116cac8c38aee5f9722d772fe57b72f75b479c2307ea6c70d325623bd79f4f284f0033d531b2597dcc7f2857b75477c354cb429aafa543e5              988 main/binary-amd64/Packages.gz
  467a7d989af19dee9e55be59b6d5d31d366843072f12bf0ec54e5b47043d303dc1d39126870e20eb79a37894edc5294be4157b2e5d57e284f06db57993aaed2c               45 main/i18n/Translation-en.gz
- 28404a5878ec8ff82c8263745f8033761c539c8c2fb455e0e58599dbde055163126a21deb4c69c1d41d230ddca8dec05c5baad86f98f807238ab5f8c2105fff0              145 main/icons-48x48.tar.gz
- 28404a5878ec8ff82c8263745f8033761c539c8c2fb455e0e58599dbde055163126a21deb4c69c1d41d230ddca8dec05c5baad86f98f807238ab5f8c2105fff0              145 main/icons-64x64.tar.gz
+ 5ecf74156a93353ad84bce77cb6525580bbb086b1d89c96c73bcdd3987d40ccb81c6f4c42da0b08cbd95f67332342b655fedf8409c67b60af58e0ee62c9920fa              144 main/icons-48x48.tar.gz
+ 5ecf74156a93353ad84bce77cb6525580bbb086b1d89c96c73bcdd3987d40ccb81c6f4c42da0b08cbd95f67332342b655fedf8409c67b60af58e0ee62c9920fa              144 main/icons-64x64.tar.gz
