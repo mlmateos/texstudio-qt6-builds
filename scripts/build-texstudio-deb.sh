@@ -273,6 +273,19 @@ RAW_VER="${VER_GIT:-4.9.5}"
 VER=$(echo "$RAW_VER" | sed -E 's/alpha([0-9]+)/-alpha\1/; s/beta([0-9]+)/-beta\1/; s/rc([0-9]+)/-rc\1/')
 DEB_VER=$(echo "$VER" | sed 's/-alpha/~alpha/g; s/-beta/~beta/g; s/-rc/~rc/g')
 log "Versión final para .deb: ${DEB_VER}-${PKG_REVISION}"
+
+#===============================================================================
+# DETECCIÓN TEMPRANA DE PRE-RELEASE (para update.json)
+#===============================================================================
+
+# Detectar si es pre-release para el update.json
+IS_PRERELEASE=false
+if [[ "$VER" == *alpha* || "$VER" == *beta* || "$VER" == *rc* ]]; then
+    IS_PRERELEASE=true
+    log "🧪 Detectada versión pre-release: $VER"
+else
+    log "✅ Detectada versión estable: $VER"
+fi
 #===============================================================================
 # PARCHE: MODIFICAR URLs DE ACTUALIZACIÓN Y REORGANIZAR ABOUT DIALOG
 #===============================================================================
@@ -813,16 +826,15 @@ EOF
     cd ../..
 done
 
-# Crear update.json (formato GitHub API)
-
-# Crear update.json
-log "🔄 Actualizando update.json..."
-cat > pool/update.json << EOF
+# Crear update.json - SOLO si es versión estable
+if [[ "$IS_PRERELEASE" == false ]]; then
+    log "🔄 Actualizando update.json con versión estable ${VER}..."
+    cat > pool/update.json <<UPDATEEOF
 [
   {
-    "ref":"refs/tags/${VER//\~/}",
-    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy8${VER//\~/}",
-    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/${VER//\~/}",
+    "ref":"refs/tags/${VER}",
+    "node_id":"MDM6UmVmMjE2MjYyMjU4OnJlZnMvdGFncy8${VER}",
+    "url":"https://api.github.com/repos/texstudio-org/texstudio/git/refs/tags/${VER}",
     "object":{
       "sha":"abc123def456789",
       "type":"commit",
@@ -830,7 +842,12 @@ cat > pool/update.json << EOF
     }
   }
 ]
-EOF
+UPDATEEOF
+    log "✅ update.json actualizado con ${VER}"
+else
+    log "ℹ️ Versión pre-release (${VER}) - NO se actualiza update.json"
+    log "   El update.json mantiene la última versión estable (4.9.6)"
+fi
 
 # Commit y push en la rama apt-repo
 git add -f pool/ dists/

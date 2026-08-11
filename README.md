@@ -192,6 +192,7 @@ Both build scripts support the following options:
    - Redirect update checker URLs to this repository
    - Add custom credits to the About dialog
    - Mention AI assistance in the About dialog
+   -   Smart update checker: `pool/update.json` is only refreshed when building a **stable** release, so alpha/beta/rc builds never show up as the "latest stable version" in the About/Configure dialogs
 5. 🔨 Compile TeXstudio with Qt6 and Poppler support
 6. 📦 Package the result (`.deb` or `AppImage`)
 7. 🔐 Sign with GPG (if `--sign`)
@@ -204,7 +205,7 @@ Both build scripts support the following options:
 | Type | Version | Branch |
 | --- | --- | --- |
 | 🟢 **Stable** | **4.9.6** | `stable`, `alpha` |
-| 🟡 Development | 4.9.6-rc2 | `alpha` |
+| 🟡 Development | 4.9.7beta2 | `alpha` |
 
 ---
 
