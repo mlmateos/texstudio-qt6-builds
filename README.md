@@ -209,7 +209,7 @@ Both build scripts support the following options:
 | Type | Version | Branch |
 | --- | --- | --- |
 | 🟢 **Stable** | **4.9.6** | `stable`, `alpha` |
-| 🟡 Development | 4.9.7beta2 | `alpha` |
+| 🟡 Development | 4.9.7-rc1 | `alpha` |
 <!-- AUTO-VERSIONS:END -->
 ---
 
