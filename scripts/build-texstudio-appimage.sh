@@ -658,3 +658,10 @@ else
     die "No se generó la AppImage correctamente."
 fi
 log "✅ Proceso completado."
+
+#===============================================================================
+# AUTO-ACTUALIZACIÓN DEL README (tras publicar)
+#===============================================================================
+if [[ "$PUBLISH" == true ]]; then
+    bash "$(dirname "${BASH_SOURCE[0]}")/sync-readme-versions.sh" || warn "⚠️ No se pudo auto-actualizar el README"
+fi
