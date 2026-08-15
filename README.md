@@ -208,8 +208,7 @@ Both build scripts support the following options:
 <!-- AUTO-VERSIONS:START -->
 | Type | Version | Branch |
 | --- | --- | --- |
-| 🟢 **Stable** | **4.9.6** | `stable`, `alpha` |
-| 🟡 Development | 4.9.7-rc1 | `alpha` |
+| 🟢 **Stable** | **4.9.7** | `stable`, `alpha` |
 <!-- AUTO-VERSIONS:END -->
 ---
 
