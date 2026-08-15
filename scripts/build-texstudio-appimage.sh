@@ -237,34 +237,44 @@ fi
 
 mkdir -p "$BUILD_DIR" "$APPDIR"
 #===============================================================================
-# DETECCIÓN / FORZADO DE VERSIÓN
+# DETECCIÓN / FORZADO DE VERSIÓN (orden correcto: explícito > describe > API)
 #===============================================================================
-header "🏷️  DETECTANDO VERSIÓN"
-if [[ -d "$PROJECT_DIR/.git" ]]; then
-    VER_GIT=$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//') || VER_GIT=""
-    if [[ -n "$VER_GIT" ]]; then
-        log "📌 Forzando versión $VER_GIT..."
-        CMAKE_VERSION=$(echo "$VER_GIT" | sed 's/[^0-9.]//g')
-        log "   📌 CMake usará: $CMAKE_VERSION"
-        log "   📌 App mostrará: $VER_GIT"
-        sed -i "s|project(TeXstudio VERSION [0-9.]\+|project(TeXstudio VERSION $CMAKE_VERSION|g" "$PROJECT_DIR/CMakeLists.txt"
-        sed -i "s|add_definitions(-DTEXSTUDIO_VERSION=\"[^\"]*\")|add_definitions(-DTEXSTUDIO_VERSION=\"$VER_GIT\")|g" "$PROJECT_DIR/CMakeLists.txt"
-        if [[ -f "$PROJECT_DIR/src/utilsVersion.h" ]]; then
-            sed -i "s|#define TXSVERSION \"[^\"]*\"|#define TXSVERSION \"$VER_GIT\"|g" "$PROJECT_DIR/src/utilsVersion.h"
-        fi
-        find "$PROJECT_DIR/src" -type f \( -name "*.h" -o -name "*.cpp" \) -exec \
-            grep -l "TXSVERSION" {} + 2>/dev/null | xargs -r sed -i "s|TXSVERSION \"[^\"]*\"|TXSVERSION \"$VER_GIT\"|g" || true
-    fi
+header "🏷️ DETECTANDO VERSIÓN"
+
+VER_GIT=""
+
+# 1) Fuente de verdad explícita: --branch con formato de versión
+if [[ "$BRANCH" =~ ^v?[0-9]+\.[0-9]+([.-][0-9a-zA-Z]+)*$ ]]; then
+    VER_GIT="${BRANCH#v}"
+    log "📌 Versión explícita desde --branch: $VER_GIT"
 fi
 
-# Si es master, detectar último tag remoto
-if [[ "$BRANCH" == "master" && -z "${VER_GIT:-}" ]]; then
+# 2) git describe (solo si no hay versión explícita y el clon tiene tags)
+if [[ -z "$VER_GIT" ]] && [[ -d "$PROJECT_DIR/.git" ]]; then
+    VER_GIT=$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//') || VER_GIT=""
+fi
+
+# 3) Fallback para master: último tag vía GitHub API
+if [[ -z "$VER_GIT" ]] && [[ "$BRANCH" == "master" ]]; then
     log "🔍 Detectando último tag vía GitHub API..."
-    LATEST_TAG=""
-    if API_RESPONSE=$(curl_with_retry "GitHub API" "https://api.github.com/repos/texstudio-org/texstudio/tags"); then
-        LATEST_TAG=$(echo "$API_RESPONSE" | grep -oP '"name":\s*"\K[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9]*' | head -n1)
+    LATEST_TAG=$(curl -s "https://api.github.com/repos/texstudio-org/texstudio/tags" \
+        | grep -oP '"name":\s*"\K[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9]*' | head -n1) || true
+    [[ -n "$LATEST_TAG" ]] && VER_GIT="$LATEST_TAG"
+fi
+
+# 4) Forzado en el código fuente (después de resolver VER_GIT, no antes)
+if [[ -n "$VER_GIT" ]]; then
+    log "📌 Forzando versión $VER_GIT en el código fuente..."
+    CMAKE_VERSION=$(echo "$VER_GIT" | sed 's/[^0-9.]//g')
+    sed -i -E "s/(project\(TeXstudio VERSION )[0-9.]+/\1${CMAKE_VERSION}/" "$PROJECT_DIR/CMakeLists.txt"
+    sed -i -E "s/(add_definitions\(-DTEXSTUDIO_VERSION=\")[^\"]*/\1${VER_GIT}/" "$PROJECT_DIR/CMakeLists.txt"
+    if [[ -f "$PROJECT_DIR/src/utilsVersion.h" ]]; then
+        sed -i -E "s/(#define TXSVERSION \")[^\"]*/\1${VER_GIT}/" "$PROJECT_DIR/src/utilsVersion.h"
     fi
-    [[ -n "$LATEST_TAG" ]] && VER_GIT="$LATEST_TAG" || die "No se pudo detectar tag. Usa --branch."
+    find "$PROJECT_DIR/src" -type f \( -name "*.h" -o -name "*.cpp" \) -exec grep -l "TXSVERSION" {} + 2>/dev/null \
+    | xargs -r sed -i -E "s/(TXSVERSION \")[^\"]*/\1${VER_GIT}/" || true
+else
+    warn "⚠️ No se pudo detectar versión; se usará la del código fuente."
 fi
 
 RAW_VER="${VER_GIT:-4.9.5}"
