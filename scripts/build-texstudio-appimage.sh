@@ -26,6 +26,7 @@ RETRY_DELAY=5
 APT_REPO_URL="https://mlmateos.github.io/texstudio-qt6-builds"
 APT_REPO_GITHUB="https://github.com/mlmateos/texstudio-qt6-builds"
 KEEP_SOURCE=true
+AUTO_CONFIRM=false
 #===============================================================================
 # DETECCIÓN INTELIGENTE DE HILOS
 #===============================================================================
@@ -51,6 +52,7 @@ while [[ $# -gt 0 ]]; do
         --publish)    PUBLISH=true; shift ;;
         --gpg-key)    GPG_KEY="$2"; shift 2 ;;
         --no-keep-source) KEEP_SOURCE=false; shift ;;
+        --yes)            AUTO_CONFIRM=true; shift ;;
         --help|-h)
             cat << 'HELP'
 Uso: ./build-texstudio-appimage.sh [OPCIONES]
@@ -63,6 +65,7 @@ Uso: ./build-texstudio-appimage.sh [OPCIONES]
   --publish       Publica en GitHub Releases
   --gpg-key ID    ID de clave GPG para firmar
   --no-keep-source No mantiene el código fuente después de compilar
+  --yes           No pide confirmación (modo automatizado)
   --help, -h      Muestra esta ayuda
 HELP
             exit 0 ;;
@@ -610,8 +613,12 @@ if [[ "$PUBLISH" == true ]]; then
     fi
 
     if [[ "$RELEASE_EXISTS" == true ]]; then
-        log "⚠️  La release 'v${VER}' YA EXISTE."
-        read -r -p "¿Deseas AÑADIR la AppImage a esta release? (y/N) " CONFIRM
+        if [[ "$AUTO_CONFIRM" == true ]]; then
+            CONFIRM="y"
+        else
+            log "⚠  La release 'v${VER}' YA EXISTE."
+            read -r -p "¿Deseas AÑADIR la AppImage a esta release? (y/N) " CONFIRM
+        fi
         if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
             gh release upload "v${VER}" --clobber --repo "$FULL_REPO" "${UPLOAD_FILES[@]}"
             log "✅ AppImage AÑADIDA a la release existente"
@@ -622,7 +629,11 @@ if [[ "$PUBLISH" == true ]]; then
         fi
     else
         log "✨ Creando nueva release: v${VER}"
-        read -r -p "¿Deseas CREAR la release? (y/N) " CONFIRM
+        if [[ "$AUTO_CONFIRM" == true ]]; then
+            CONFIRM="y"
+        else
+            read -r -p "¿Deseas CREAR la release? (y/N) " CONFIRM
+        fi
         if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
             CREATE_ARGS=(
                 "v${VER}"
