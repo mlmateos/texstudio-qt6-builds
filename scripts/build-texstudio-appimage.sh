@@ -5,6 +5,10 @@
 # v2.7: Créditos reorganizados, URLs parcheadas, integración con repo APT
 #===============================================================================
 set -euo pipefail
+# Guardar ruta absoluta del directorio del script (antes de cualquier cd)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Guardar ruta absoluta del directorio del script (antes de cualquier cd)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #===============================================================================
 # CONFIGURACIÓN BASE
 #===============================================================================
@@ -673,5 +677,27 @@ log "✅ Proceso completado."
 # AUTO-ACTUALIZACIÓN DEL README (tras publicar)
 #===============================================================================
 if [[ "$PUBLISH" == true ]]; then
-    bash "$(dirname "${BASH_SOURCE[0]}")/sync-readme-versions.sh" || warn "⚠️ No se pudo auto-actualizar el README"
+    header " ACTUALIZANDO README"
+    
+    SYNC_SCRIPT="$SCRIPT_DIR/sync-readme-versions.sh"
+    
+    if [[ ! -f "$SYNC_SCRIPT" ]]; then
+        warn "⚠️ No se encontró: $SYNC_SCRIPT"
+    elif [[ ! -x "$SYNC_SCRIPT" ]]; then
+        warn "⚠️ El script no tiene permisos de ejecución. Corrigiendo..."
+        chmod +x "$SYNC_SCRIPT"
+        bash "$SYNC_SCRIPT" 2>&1 | tee /tmp/sync-readme.log
+        if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
+            log "✅ README actualizado correctamente"
+        else
+            warn "⚠️ sync-readme-versions.sh falló. Revisa /tmp/sync-readme.log"
+        fi
+    else
+        bash "$SYNC_SCRIPT" 2>&1 | tee /tmp/sync-readme.log
+        if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
+            log "✅ README actualizado correctamente"
+        else
+            warn "️ sync-readme-versions.sh falló. Revisa /tmp/sync-readme.log"
+        fi
+    fi
 fi
