@@ -508,4 +508,34 @@ Description: Integrated writing environment for creating LaTeX documents
  .
  This is a custom build with Qt6 and Poppler support by Manuel López Mateos.
 
+Package: texstudio
+Version: 4.9.8~rc2-1
+Architecture: amd64
+Maintainer: Manuel Mateos <manuel@mateos.dev>
+Installed-Size: 68158
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.0), libhunspell-1.7-0, libpoppler-qt6-3t64 (>= 0.81.0), libqt6concurrent6 (>= 6.1.2), libqt6core5compat6 (>= 6.6.0), libqt6core6t64 (>= 6.8.2), libqt6dbus6 (>= 6.1.2), libqt6gui6 (>= 6.8.2), libqt6network6 (>= 6.4.0), libqt6printsupport6 (>= 6.1.2), libqt6qml6 (>= 6.6.0), libqt6svg6 (>= 6.6.0), libqt6widgets6 (>= 6.8.2), libqt6xml6 (>= 6.6.0), libquazip1-qt6-1t64 (>= 1.4), libstdc++6 (>= 11), libx11-6, zlib1g (>= 1:1.1.4)
+Recommends: texlive-latex-base, texlive-binaries, texlive-latex-recommended
+Suggests: texlive-full, biber, latexmk
+Filename: pool/texstudio-4.9.8-rc2-qt6-amd64.deb
+Size: 19876300
+MD5sum: 9f3bfe59a4b4a7361427a020fdeaf509
+SHA1: cfab0da629400526c2d2ea5609eafcbbc8bd7071
+SHA256: 7b64ac7f6fc0c3ea515f0c0d685d1dd2f369d2f2fb2d1f77eb61ac14524d693f
+Section: editors
+Priority: optional
+Homepage: https://www.texstudio.org/
+Description: Integrated writing environment for creating LaTeX documents
+ TeXstudio is an integrated writing environment for creating LaTeX documents.
+ The goal is to provide a feature-rich editor with low system overhead.
+ .
+ Features include:
+  * Syntax highlighting
+  * Integrated LaTeX editor with auto-completion
+  * Built-in PDF viewer with SyncTeX support (Poppler-Qt6)
+  * Spell checking (Hunspell)
+  * Live preview
+  * Built on Qt6 for modern UI/UX
+ .
+ This is a custom build with Qt6 and Poppler support by Manuel López Mateos.
+
 
