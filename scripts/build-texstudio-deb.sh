@@ -574,6 +574,24 @@ if [[ "$DEB_FILE" != "$DEB_FINAL" ]]; then
     log "Renombrado: $DEB_FILE → $DEB_FINAL"
 fi
 
+#===============================================================================
+# DEPENDS PORTABLE DE QUAZIP (lista OR entre distros)
+#===============================================================================
+log "🔧 Normalizando Depends de QuaZip..."
+WORK_DEB=$(mktemp -d)
+dpkg-deb -R "$DEB_FINAL" "$WORK_DEB"
+
+# Reemplazar el Depends estricto por una lista OR
+# Nombres conocidos: libquazip1-qt6-1t64 (Ubuntu 24.04), libquazip1-qt6-1.7 (Sid/tobixu)
+sed -i -E 's#libquazip[^ (]+ \(>= ([0-9.]+)\)#libquazip1-qt6-1t64 (>= \1) | libquazip1-qt6-1.7 (>= \1) | libquazip1-qt6-1 (>= \1) | libquazip-qt6-1 (>= \1)#g' "$WORK_DEB/DEBIAN/control"
+
+echo "   📋 Depends de QuaZip en el .deb:"
+grep -E "^Depends:" "$WORK_DEB/DEBIAN/control" | tr ',' '\n' | grep -i quazip || true
+
+dpkg-deb -b -Zxz "$WORK_DEB" "$DEB_FINAL"
+rm -rf "$WORK_DEB"
+log "✅ Depends de QuaZip normalizado (compatible con Ubuntu 24.04, Sid y antiguas)"
+
 sha256sum "$DEB_FINAL" > SHA256SUMS-DEB.txt
 cat SHA256SUMS-DEB.txt
 
