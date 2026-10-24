@@ -35,7 +35,7 @@ sudo chmod a+r /etc/apt/keyrings/texstudio-qt6-key.gpg
 ### Step 2: Choose Your Branch
 Add the repository to your system. Choose **one** of the following options:
 
-🟢 Stable (Recommended for most users) — Only stable releases (currently v4.9.8):
+🟢 Stable (Recommended for most users) — Only stable releases (currently v4.9.9):
 ```bash
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/texstudio-qt6-key.gpg] https://mlmateos.github.io/texstudio-qt6-builds stable main" | \
   sudo tee /etc/apt/sources.list.d/texstudio-qt6-builds.list
@@ -208,8 +208,7 @@ Both build scripts support the following options:
 <!-- AUTO-VERSIONS:START -->
 | Type | Version | Branch |
 | --- | --- | --- |
-| 🟢 **Stable** | **4.9.8** | `stable`, `alpha` |
-| 🟡 Development | 4.9.9-rc1 | `alpha` |
+| 🟢 **Stable** | **4.9.9** | `stable`, `alpha` |
 <!-- AUTO-VERSIONS:END -->
 ---
 
