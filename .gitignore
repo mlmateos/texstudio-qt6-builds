@@ -31,3 +31,5 @@ scripts/*.bak
 scripts/*.backup-*
 scripts/build-deb.log
 scripts/build-*.txt
+
+# Permitir explícitamente los paquetes del repo APT
