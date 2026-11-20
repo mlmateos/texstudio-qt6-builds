@@ -729,7 +729,7 @@ gzip -9cn dists/alpha/main/binary-amd64/Packages > dists/alpha/main/binary-amd64
 # 2. Generar Packages para rama STABLE
 log "📋 Generando rama stable (solo versiones estables)..."
 python3 << 'PYEOF'
-import re
+import re, subprocess
 with open('dists/alpha/main/binary-amd64/Packages', 'r') as f:
     content = f.read()
 blocks = re.split(r'\n\n+', content.strip())
@@ -741,8 +741,22 @@ for block in blocks:
         filename = filename_match.group(1)
         if 'alpha' not in filename and 'beta' not in filename and 'rc' not in filename:
             stable_blocks.append(block)
+# >>> FIX keep-latest: conservar solo la versión más alta por paquete (índice estilo Debian)
+def _field(block, name):
+    m = re.search(r'^' + name + r':\s+(.+)$', block, re.MULTILINE)
+    return m.group(1) if m else ''
+_latest = {}
+for block in stable_blocks:
+    pkg = _field(block, 'Package')
+    ver = _field(block, 'Version')
+    if pkg not in _latest:
+        _latest[pkg] = block
+    elif subprocess.run(['dpkg', '--compare-versions', ver, 'gt', _field(_latest[pkg], 'Version')]).returncode == 0:
+        _latest[pkg] = block
+stable_blocks = list(_latest.values())
+# <<< FIX keep-latest
 with open('dists/stable/main/binary-amd64/Packages', 'w') as f:
-    f.write('\n'.join(stable_blocks) + '\n')
+    f.write('\n\n'.join(stable_blocks) + '\n')
 print(f"✅ Generado Packages stable con {len(stable_blocks)} paquete(s)")
 PYEOF
 printf '\n' >> dists/stable/main/binary-amd64/Packages
